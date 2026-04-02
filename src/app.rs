@@ -39,12 +39,8 @@ pub struct App {
 impl App {
     pub fn new(width: u32, height: u32) -> Result<Self, AppError> {
         let fonts = FontManager::new()?;
-        let mut root = Container::new(1);
+        let mut root = Container::new_auto();
         root.style.padding = crate::layout::EdgeInsets::all(16.0);
-        root.push(Text::new(2, "純Rust 2D UIライブラリ (日本語対応)"));
-        root.push(Button::new(3, "押してください").on_click(|| {
-            println!("button clicked");
-        }));
 
         Ok(Self {
             root,
@@ -54,6 +50,15 @@ impl App {
             event_state: EventState::default(),
             background: Color::WHITE,
         })
+    }
+
+    pub fn demo(width: u32, height: u32) -> Result<Self, AppError> {
+        let mut app = Self::new(width, height)?;
+        app.root.push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
+        app.root.push(Button::new_auto("押してください").on_click(|| {
+            println!("button clicked");
+        }));
+        Ok(app)
     }
 
     pub fn request_layout(&mut self) {
@@ -102,17 +107,16 @@ impl App {
 
 pub fn run() -> Result<(), AppError> {
     let event_loop = EventLoop::new().map_err(|e| AppError::Window(e.to_string()))?;
-    let window = Box::new(
+    let window = Rc::new(
         WindowBuilder::new()
             .with_title("Rust 2D UI")
             .with_inner_size(LogicalSize::new(960.0f64, 640.0f64))
             .build(&event_loop)
             .map_err(|e| AppError::Window(e.to_string()))?,
     );
-    let window: &'static winit::window::Window = Box::leak(window);
 
-    let context = Context::new(window).map_err(|e| AppError::Render(e.to_string()))?;
-    let mut surface = Surface::new(&context, window).map_err(|e| AppError::Render(e.to_string()))?;
+    let context = Context::new(window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
+    let mut surface = Surface::new(&context, window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
 
     let size = window.inner_size();
     surface
@@ -122,10 +126,11 @@ pub fn run() -> Result<(), AppError> {
         )
         .map_err(|e| AppError::Render(e.to_string()))?;
 
-    let app = Rc::new(RefCell::new(App::new(size.width, size.height)?));
+    let app = Rc::new(RefCell::new(App::demo(size.width, size.height)?));
     app.borrow_mut().request_layout();
 
     let app_ref = app.clone();
+    window.request_redraw();
 
     event_loop
         .run(move |event, target| {
@@ -174,7 +179,7 @@ pub fn run() -> Result<(), AppError> {
                     }
                     _ => {}
                 },
-                Event::AboutToWait => window.request_redraw(),
+                Event::AboutToWait => {}
                 _ => {}
             }
         })

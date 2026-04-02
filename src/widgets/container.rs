@@ -3,7 +3,7 @@ use crate::{
     event::{EventState, UiEvent},
     layout::{BoxConstraints, LayoutDirection, LayoutNode, LayoutStyle},
     text::FontManager,
-    widgets::Widget,
+    widgets::{next_widget_id, Widget},
 };
 
 pub struct Container {
@@ -14,6 +14,10 @@ pub struct Container {
 }
 
 impl Container {
+    pub fn new_auto() -> Self {
+        Self::new(next_widget_id())
+    }
+
     pub fn new(id: u64) -> Self {
         Self {
             id,

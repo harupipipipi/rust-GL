@@ -1,7 +1,6 @@
 use crate::canvas::{Canvas, Color, Rect};
 use font_kit::{
     family_name::FamilyName,
-    font::Font,
     handle::Handle,
     properties::Properties,
     source::SystemSource,
@@ -141,5 +140,3 @@ fn load_handle_bytes(handle: Handle) -> Result<Vec<u8>, TextError> {
     }
 }
 
-#[allow(dead_code)]
-fn _keep_font_type(_font: Font) {}
