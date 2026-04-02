@@ -45,8 +45,8 @@ impl Widget for Container {
 
         let mut node = LayoutNode::new(self.id, x, y, width as u32, constraints.max_height as u32);
         let child_max_width = width - self.style.padding.horizontal();
-        let mut used_main = 0.0;
-        let mut max_cross = 0.0;
+        let mut used_main: f32 = 0.0;
+        let mut max_cross: f32 = 0.0;
 
         for child in self.children.iter_mut() {
             let child_constraints = BoxConstraints {

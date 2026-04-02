@@ -102,14 +102,17 @@ impl App {
 
 pub fn run() -> Result<(), AppError> {
     let event_loop = EventLoop::new().map_err(|e| AppError::Window(e.to_string()))?;
-    let window = WindowBuilder::new()
-        .with_title("Rust 2D UI")
-        .with_inner_size(LogicalSize::new(960.0f64, 640.0f64))
-        .build(&event_loop)
-        .map_err(|e| AppError::Window(e.to_string()))?;
+    let window = Box::new(
+        WindowBuilder::new()
+            .with_title("Rust 2D UI")
+            .with_inner_size(LogicalSize::new(960.0f64, 640.0f64))
+            .build(&event_loop)
+            .map_err(|e| AppError::Window(e.to_string()))?,
+    );
+    let window: &'static winit::window::Window = Box::leak(window);
 
-    let context = Context::new(&window).map_err(|e| AppError::Render(e.to_string()))?;
-    let mut surface = Surface::new(&context, &window).map_err(|e| AppError::Render(e.to_string()))?;
+    let context = Context::new(window).map_err(|e| AppError::Render(e.to_string()))?;
+    let mut surface = Surface::new(&context, window).map_err(|e| AppError::Render(e.to_string()))?;
 
     let size = window.inner_size();
     surface
