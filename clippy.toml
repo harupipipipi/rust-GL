@@ -1,0 +1,16 @@
+# Project-wide Clippy configuration for rust2d_ui
+# https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# Minimum Supported Rust Version — keeps Clippy from suggesting
+# features unavailable on older toolchains.
+msrv = "1.70.0"
+
+# Cognitive complexity threshold (default 25, stricter here)
+cognitive-complexity-threshold = 30
+
+# Single-char binding names that are acceptable
+allowed-idents-below-min-chars = ["x", "y", "w", "h", "r", "g", "b", "a", "i", "j", "p", "c"]
+
+# Maximum number of lines in a function body before triggering
+# `clippy::too_many_lines`
+too-many-lines-threshold = 150

@@ -1,0 +1,50 @@
+# cargo-deny configuration for rust2d_ui
+# Run: cargo deny check
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+targets = []
+all-features = false
+no-default-features = false
+
+# ── Advisories ──────────────────────────────────────────────
+[advisories]
+# Lint level for crates with known security vulnerabilities
+vulnerability = "deny"
+# Lint level for crates whose advisory has been withdrawn
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+ignore = []
+
+# ── Licenses ────────────────────────────────────────────────
+[licenses]
+unlicensed = "deny"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
+deny = []
+copyleft = "warn"
+allow-osi-fsf-free = "neither"
+default = "deny"
+confidence-threshold = 0.8
+
+# ── Bans ────────────────────────────────────────────────────
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+# ── Sources ─────────────────────────────────────────────────
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
