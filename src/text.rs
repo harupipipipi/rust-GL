@@ -6,7 +6,10 @@
 
 use crate::canvas::{Canvas, Color, Rect};
 use font_kit::{
-    family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
+    family_name::FamilyName,
+    handle::Handle,
+    properties::Properties,
+    source::SystemSource,
 };
 use fontdue::{Font as FontdueFont, FontSettings};
 use thiserror::Error;
@@ -127,14 +130,8 @@ impl FontManager {
             let cw = self.font.metrics(ch, px).advance_width;
 
             if is_cjk(ch) {
-                flush_word(
-                    &mut current,
-                    &mut cur_w,
-                    &mut word,
-                    &mut word_w,
-                    max_width,
-                    &mut result,
-                );
+                flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
+                           max_width, &mut result);
                 if cur_w + cw > max_width && !current.is_empty() {
                     result.push(std::mem::take(&mut current));
                     cur_w = 0.0;
@@ -142,14 +139,8 @@ impl FontManager {
                 current.push(ch);
                 cur_w += cw;
             } else if ch == ' ' {
-                flush_word(
-                    &mut current,
-                    &mut cur_w,
-                    &mut word,
-                    &mut word_w,
-                    max_width,
-                    &mut result,
-                );
+                flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
+                           max_width, &mut result);
                 if cur_w + cw > max_width && !current.is_empty() {
                     result.push(std::mem::take(&mut current));
                     cur_w = 0.0;
@@ -162,14 +153,8 @@ impl FontManager {
             }
         }
 
-        flush_word(
-            &mut current,
-            &mut cur_w,
-            &mut word,
-            &mut word_w,
-            max_width,
-            &mut result,
-        );
+        flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
+                   max_width, &mut result);
         if !current.is_empty() {
             result.push(current);
         }
@@ -208,9 +193,7 @@ impl FontManager {
                 for gy in 0..metrics.height {
                     for gx in 0..metrics.width {
                         let alpha = bitmap[gy * metrics.width + gx];
-                        if alpha == 0 {
-                            continue;
-                        }
+                        if alpha == 0 { continue; }
                         canvas.blend_pixel(
                             cx + metrics.xmin + gx as i32,
                             glyph_top + gy as i32,
@@ -255,9 +238,7 @@ fn flush_word(
     max_width: f32,
     result: &mut Vec<String>,
 ) {
-    if word.is_empty() {
-        return;
-    }
+    if word.is_empty() { return; }
 
     if *cur_w + *word_w > max_width && !current.is_empty() {
         result.push(std::mem::take(current));

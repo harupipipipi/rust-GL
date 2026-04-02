@@ -3,7 +3,10 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutDirection, LayoutNode, LayoutStyle},
+    layout::{
+        BoxConstraints, LayoutDirection, LayoutNode, LayoutStyle,
+        f32_to_i32, f32_to_u32,
+    },
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -48,13 +51,9 @@ impl Container {
 }
 
 impl Widget for Container {
-    fn id(&self) -> WidgetId {
-        self.id
-    }
+    fn id(&self) -> WidgetId { self.id }
 
-    fn debug_name(&self) -> &str {
-        "Container"
-    }
+    fn debug_name(&self) -> &str { "Container" }
 
     fn layout(
         &mut self,
@@ -107,7 +106,7 @@ impl Widget for Container {
         }
 
         let total_h = match self.style.direction {
-            LayoutDirection::Vertical => used_main + self.style.padding.vertical(),
+            LayoutDirection::Vertical   => used_main + self.style.padding.vertical(),
             LayoutDirection::Horizontal => max_cross + self.style.padding.vertical(),
         };
 

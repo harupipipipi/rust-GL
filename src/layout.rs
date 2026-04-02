@@ -28,25 +28,16 @@ pub struct EdgeInsets {
 impl EdgeInsets {
     /// Create insets where all four sides have the same value.
     pub fn all(v: f32) -> Self {
-        Self {
-            top: v,
-            right: v,
-            bottom: v,
-            left: v,
-        }
+        Self { top: v, right: v, bottom: v, left: v }
     }
 
     /// Sum of left and right.
     #[inline]
-    pub fn horizontal(&self) -> f32 {
-        self.left + self.right
-    }
+    pub fn horizontal(&self) -> f32 { self.left + self.right }
 
     /// Sum of top and bottom.
     #[inline]
-    pub fn vertical(&self) -> f32 {
-        self.top + self.bottom
-    }
+    pub fn vertical(&self) -> f32 { self.top + self.bottom }
 }
 
 /// Constraints passed down the widget tree during layout.
@@ -65,22 +56,12 @@ pub struct BoxConstraints {
 impl BoxConstraints {
     /// Both min and max are the same.
     pub fn tight(width: f32, height: f32) -> Self {
-        Self {
-            min_width: width,
-            max_width: width,
-            min_height: height,
-            max_height: height,
-        }
+        Self { min_width: width, max_width: width, min_height: height, max_height: height }
     }
 
     /// Min is zero, max is the given size.
     pub fn loose(width: f32, height: f32) -> Self {
-        Self {
-            min_width: 0.0,
-            max_width: width,
-            min_height: 0.0,
-            max_height: height,
-        }
+        Self { min_width: 0.0, max_width: width, min_height: 0.0, max_height: height }
     }
 
     /// Clamp `size` into these constraints.

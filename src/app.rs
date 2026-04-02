@@ -19,7 +19,9 @@ use crate::{
     event::{EventState, UiEvent},
     layout::BoxConstraints,
     text::{FontManager, TextError},
-    widgets::{button::Button, container::Container, text::Text, Widget},
+    widgets::{
+        button::Button, container::Container, text::Text, Widget,
+    },
 };
 
 /// Errors produced by [`App`] or [`run()`].
@@ -67,18 +69,21 @@ impl App {
     /// Create a demo application with sample widgets.
     pub fn demo(width: u32, height: u32) -> Result<Self, AppError> {
         let mut app = Self::new(width, height)?;
-        app.root
-            .push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
-        app.root
-            .push(Button::new_auto("押してください").on_click(|| {
+        app.root.push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
+        app.root.push(
+            Button::new_auto("押してください").on_click(|| {
                 println!("button clicked");
-            }));
+            }),
+        );
         Ok(app)
     }
 
     /// Recompute the layout tree from the current root widget.
     pub fn request_layout(&mut self) {
-        let c = BoxConstraints::tight(self.canvas.width() as f32, self.canvas.height() as f32);
+        let c = BoxConstraints::tight(
+            self.canvas.width() as f32,
+            self.canvas.height() as f32,
+        );
         self.layout_tree = Some(self.root.layout(c, 0, 0, &self.fonts));
         self.event_state.request_redraw();
     }
@@ -103,8 +108,7 @@ impl App {
         // `self.root` and `self.event_state`. This eliminates the previous
         // `layout.clone()` on every event.
         if let Some(layout) = self.layout_tree.take() {
-            self.root
-                .handle_event(&event, &mut self.event_state, &layout);
+            self.root.handle_event(&event, &mut self.event_state, &layout);
             self.layout_tree = Some(layout);
         }
     }
@@ -131,7 +135,8 @@ impl App {
 
 /// Create a demo window and run the event loop (blocks until close).
 pub fn run() -> Result<(), AppError> {
-    let event_loop = EventLoop::new().map_err(|e| AppError::Window(e.to_string()))?;
+    let event_loop = EventLoop::new()
+        .map_err(|e| AppError::Window(e.to_string()))?;
 
     let window = Rc::new(
         WindowBuilder::new()
@@ -141,7 +146,8 @@ pub fn run() -> Result<(), AppError> {
             .map_err(|e| AppError::Window(e.to_string()))?,
     );
 
-    let context = Context::new(window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
+    let context =
+        Context::new(window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
     let mut surface =
         Surface::new(&context, window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
 

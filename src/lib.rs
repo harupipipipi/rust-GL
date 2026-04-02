@@ -9,7 +9,6 @@
 pub mod app;
 pub mod canvas;
 pub mod event;
-pub mod keyboard;
 pub mod layout;
 pub mod text;
 pub mod widgets;
@@ -19,11 +18,7 @@ pub use canvas::{Canvas, Color, Rect};
 pub use event::{EventState, UiEvent};
 pub use layout::{BoxConstraints, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle, Size};
 pub use text::FontManager;
-pub use widgets::{
-    button::Button, checkbox::Checkbox, container::Container,
-    divider::Divider, radio::RadioButton, scroll::ScrollView, slider::Slider,
-    spacer::Spacer, text::Text, Widget, WidgetId,
-};
+pub use widgets::{button::Button, container::Container, text::Text, Widget, WidgetId};
 
 // ─────────────────────────────────────────────────────────────────────
 // Tests
@@ -290,10 +285,7 @@ mod tests {
         let c = BoxConstraints::tight(100.0, 50.0);
         assert_eq!(c.min_width, 100.0);
         assert_eq!(c.max_width, 100.0);
-        let s = c.constrain(Size {
-            width: 200.0,
-            height: 200.0,
-        });
+        let s = c.constrain(Size { width: 200.0, height: 200.0 });
         assert_eq!(s.width, 100.0);
         assert_eq!(s.height, 50.0);
     }
@@ -302,10 +294,7 @@ mod tests {
     fn box_constraints_loose() {
         let c = BoxConstraints::loose(100.0, 50.0);
         assert_eq!(c.min_width, 0.0);
-        let s = c.constrain(Size {
-            width: 30.0,
-            height: 10.0,
-        });
+        let s = c.constrain(Size { width: 30.0, height: 10.0 });
         assert_eq!(s.width, 30.0);
         assert_eq!(s.height, 10.0);
     }
@@ -388,26 +377,25 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(100), 0, 0, 80, 30);
         let mut es = EventState::default();
 
-        let changed = btn.handle_event(&UiEvent::MouseMove { x: 10.0, y: 10.0 }, &mut es, &layout);
+        let changed = btn.handle_event(
+            &UiEvent::MouseMove { x: 10.0, y: 10.0 }, &mut es, &layout,
+        );
         assert!(changed);
 
-        let changed =
-            btn.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
+        let changed = btn.handle_event(
+            &UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout,
+        );
         assert!(changed);
     }
 
     #[test]
     fn button_handle_event_click() {
-        use std::sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc,
-        };
+        use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
         let clicked = Arc::new(AtomicBool::new(false));
         let c2 = clicked.clone();
 
-        let mut btn = Button::new(WidgetId::manual(101), "click me").on_click(move || {
-            c2.store(true, Ordering::SeqCst);
-        });
+        let mut btn = Button::new(WidgetId::manual(101), "click me")
+            .on_click(move || { c2.store(true, Ordering::SeqCst); });
         let layout = LayoutNode::new(WidgetId::manual(101), 0, 0, 80, 30);
         let mut es = EventState::default();
 
@@ -420,16 +408,12 @@ mod tests {
 
     #[test]
     fn button_click_outside_does_not_fire() {
-        use std::sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc,
-        };
+        use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
         let clicked = Arc::new(AtomicBool::new(false));
         let c2 = clicked.clone();
 
-        let mut btn = Button::new(WidgetId::manual(102), "nope").on_click(move || {
-            c2.store(true, Ordering::SeqCst);
-        });
+        let mut btn = Button::new(WidgetId::manual(102), "nope")
+            .on_click(move || { c2.store(true, Ordering::SeqCst); });
         let layout = LayoutNode::new(WidgetId::manual(102), 0, 0, 80, 30);
         let mut es = EventState::default();
 
@@ -443,7 +427,9 @@ mod tests {
         let mut t = Text::new(WidgetId::manual(200), "hello");
         let layout = LayoutNode::new(WidgetId::manual(200), 0, 0, 100, 30);
         let mut es = EventState::default();
-        assert!(!t.handle_event(&UiEvent::MouseMove { x: 10.0, y: 10.0 }, &mut es, &layout,));
+        assert!(!t.handle_event(
+            &UiEvent::MouseMove { x: 10.0, y: 10.0 }, &mut es, &layout,
+        ));
     }
 
     #[test]
@@ -456,9 +442,7 @@ mod tests {
 
         let mut es = EventState::default();
         let changed = c.handle_event(
-            &UiEvent::MouseMove { x: 10.0, y: 10.0 },
-            &mut es,
-            &root_layout,
+            &UiEvent::MouseMove { x: 10.0, y: 10.0 }, &mut es, &root_layout,
         );
         assert!(changed);
     }
@@ -542,12 +526,7 @@ mod tests {
     fn container_layout_padding_affects_first_child() {
         let fonts = FontManager::new().expect("need fonts for test");
         let mut c = Container::new(WidgetId::manual(430));
-        c.style.padding = EdgeInsets {
-            top: 15.0,
-            right: 0.0,
-            bottom: 0.0,
-            left: 25.0,
-        };
+        c.style.padding = EdgeInsets { top: 15.0, right: 0.0, bottom: 0.0, left: 25.0 };
         c.style.gap = 0.0;
         c.push(Text::new(WidgetId::manual(431), "X"));
 
@@ -608,11 +587,7 @@ mod tests {
         let fonts = FontManager::new().expect("need fonts for test");
         let text = "\n\n";
         let lines = fonts.wrap_text(text, 10000.0, 16.0);
-        assert!(
-            lines.len() >= 3,
-            "should produce at least 3 lines, got {}",
-            lines.len()
-        );
+        assert!(lines.len() >= 3, "should produce at least 3 lines, got {}", lines.len());
     }
 
     #[test]

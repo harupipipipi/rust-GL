@@ -36,7 +36,7 @@ fn button_full_state_transition() {
     // 3. Mouse down.
     let changed = btn.handle_event(&UiEvent::MouseDown { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(changed, "mouse down should change");
-    assert_eq!(es.pressed, Some(WidgetId::manual(1)));
+    assert_eq!(es.pressed(), Some(WidgetId::manual(1)));
     assert_eq!(click_count.load(Ordering::SeqCst), 0, "click not yet fired");
 
     // 4. Mouse up inside — fires click.
@@ -124,7 +124,7 @@ fn container_three_buttons_event_propagation() {
         &root_layout,
     );
     assert!(changed, "clicking button C should propagate");
-    assert_eq!(es.pressed, Some(WidgetId::manual(13)));
+    assert_eq!(es.pressed(), Some(WidgetId::manual(13)));
 }
 
 // ─────────────────────────────────────────────────────────────

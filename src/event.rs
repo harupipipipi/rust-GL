@@ -9,7 +9,7 @@ pub enum UiEvent {
     /// A mouse button was pressed.
     MouseDown { x: f32, y: f32 },
     /// A mouse button was released.
-    MouseUp { x: f32, y: f32 },
+    MouseUp   { x: f32, y: f32 },
 }
 
 /// Shared mutable state carried through the event-dispatch tree.
