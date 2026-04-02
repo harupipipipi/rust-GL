@@ -52,6 +52,7 @@ impl BoxConstraints {
     }
 
     /// Clamp `size` into these constraints.
+    #[must_use]
     pub fn constrain(&self, mut size: Size) -> Size {
         size.width = size.width.clamp(self.min_width, self.max_width);
         size.height = size.height.clamp(self.min_height, self.max_height);

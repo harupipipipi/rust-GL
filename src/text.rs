@@ -4,6 +4,8 @@
 //! rasterisation. Line metrics (ascent / descent) are read from the font
 //! file via [`fontdue::Font::horizontal_line_metrics`].
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use crate::canvas::{Canvas, Color, Rect};
 use font_kit::{
     family_name::FamilyName,
@@ -26,6 +28,9 @@ pub enum TextError {
 /// Manages a single font and exposes measurement / drawing helpers.
 pub struct FontManager {
     font: FontdueFont,
+    /// Glyph rasterisation cache: `(char, px×100) → (metrics, bitmap)`.
+    /// Wrapped in `RefCell` for interior mutability (`&self` methods can update it).
+    glyph_cache: RefCell<HashMap<(char, u32), (fontdue::Metrics, Vec<u8>)>>,
 }
 
 impl FontManager {
@@ -35,10 +40,10 @@ impl FontManager {
         let props = Properties::new();
 
         let families: &[&[FamilyName]] = &[
-            &[FamilyName::SansSerif],
             &[FamilyName::Title("Noto Sans CJK JP".into())],
             &[FamilyName::Title("Hiragino Sans".into())],
             &[FamilyName::Title("Yu Gothic".into())],
+            &[FamilyName::SansSerif],
             &[FamilyName::Monospace],
         ];
 
@@ -49,7 +54,10 @@ impl FontManager {
                     let bytes = load_handle_bytes(handle)?;
                     let font = FontdueFont::from_bytes(bytes, FontSettings::default())
                         .map_err(|_| TextError::ParseFont)?;
-                    return Ok(Self { font });
+                    return Ok(Self {
+                        font,
+                        glyph_cache: RefCell::new(HashMap::new()),
+                    });
                 }
                 Err(e) => {
                     last_err = e.to_string();
@@ -62,6 +70,29 @@ impl FontManager {
         )))
     }
 
+    // ── Cache helper ─────────────────────────────────────────────
+
+    /// Retrieve glyph metrics + bitmap from cache, or rasterise and cache.
+    fn cached_rasterize(&self, ch: char, px: f32) -> (fontdue::Metrics, Vec<u8>) {
+        let key = (ch, (px * 100.0).round() as u32);
+        {
+            let cache = self.glyph_cache.borrow();
+            if let Some(entry) = cache.get(&key) {
+                return (entry.0, entry.1.clone());
+            }
+        }
+        let (metrics, bitmap) = self.font.rasterize(ch, px);
+        self.glyph_cache
+            .borrow_mut()
+            .insert(key, (metrics, bitmap.clone()));
+        (metrics, bitmap)
+    }
+
+    /// Retrieve only glyph metrics from cache (rasterises on miss).
+    fn cached_metrics(&self, ch: char, px: f32) -> fontdue::Metrics {
+        self.cached_rasterize(ch, px).0
+    }
+
     // ── Metrics ──────────────────────────────────────────────────
 
     /// Measure the width and height of a single-line string.
@@ -69,7 +100,7 @@ impl FontManager {
         let mut width: f32 = 0.0;
         let mut max_h: f32 = 0.0;
         for ch in text.chars() {
-            let m = self.font.metrics(ch, px);
+            let m = self.cached_metrics(ch, px);
             width += m.advance_width;
             max_h = max_h.max(m.height as f32);
         }
@@ -125,7 +156,7 @@ impl FontManager {
         let mut word_w: f32 = 0.0;
 
         for ch in line.chars() {
-            let cw = self.font.metrics(ch, px).advance_width;
+            let cw = self.cached_metrics(ch, px).advance_width;
 
             if is_cjk(ch) {
                 flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
@@ -185,7 +216,7 @@ impl FontManager {
             let baseline_y = y + li as i32 * lh + ascent;
 
             for ch in line.chars() {
-                let (metrics, bitmap) = self.font.rasterize(ch, px);
+                let (metrics, bitmap) = self.cached_rasterize(ch, px);
                 let glyph_top = baseline_y - metrics.height as i32 + metrics.ymin;
 
                 for gy in 0..metrics.height {
@@ -257,5 +288,13 @@ fn is_cjk(ch: char) -> bool {
       | '\u{30A0}'..='\u{30FF}'
       | '\u{FF00}'..='\u{FFEF}'
       | '\u{20000}'..='\u{2A6DF}'
+      | '\u{2A700}'..='\u{2B73F}'   // CJK Extension C
+      | '\u{2B740}'..='\u{2B81F}'   // CJK Extension D
+      | '\u{2B820}'..='\u{2CEAF}'   // CJK Extension E
+      | '\u{2CEB0}'..='\u{2EBEF}'   // CJK Extension F
+      | '\u{F900}'..='\u{FAFF}'     // CJK Compatibility Ideographs
+      | '\u{2E80}'..='\u{2EFF}'     // CJK Radicals Supplement
+      | '\u{31F0}'..='\u{31FF}'     // Katakana Phonetic Extensions
+      | '\u{AC00}'..='\u{D7AF}'     // Hangul Syllables
     )
 }

@@ -29,6 +29,7 @@ impl Color {
     }
 
     /// Convert to `0x00RRGGBB` (softbuffer format). Alpha is dropped.
+    #[must_use]
     #[inline]
     pub const fn to_u32(self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
@@ -46,8 +47,10 @@ pub struct Rect {
     pub height: u32,
 }
 
-/// Practical upper bound for dimensions — fits in `i32` after cast.
-const MAX_EXTENT: u32 = i32::MAX as u32;
+/// Practical upper bound for dimensions.
+/// Previous value `i32::MAX` could theoretically permit ~16 EiB allocations.
+/// 16 384 × 16 384 × 4 bytes ≈ 1 GiB — a safe practical limit.
+const MAX_EXTENT: u32 = 16_384;
 
 impl Rect {
     pub const ZERO: Self = Self::new(0, 0, 0, 0);
@@ -58,6 +61,7 @@ impl Rect {
     }
 
     /// Hit-test with `f32` coordinates (half-open: `[x, x+w)`).
+    #[must_use]
     #[inline]
     pub fn contains(&self, px: f32, py: f32) -> bool {
         let (x0, y0) = (self.x as f64, self.y as f64);
@@ -67,6 +71,7 @@ impl Rect {
     }
 
     /// Smallest rect enclosing both. Zero-area rects are treated as empty.
+    #[must_use]
     pub fn union(&self, other: &Rect) -> Rect {
         if self.is_empty() { return *other; }
         if other.is_empty() { return *self; }
@@ -171,7 +176,7 @@ impl Canvas {
         } else if color.a > 0 {
             for y in y0..y1 {
                 for x in x0..x1 {
-                    self.blend_unchecked(x, y, color);
+                    self.blend_at(x, y, color);
                 }
             }
         }
@@ -225,12 +230,14 @@ impl Canvas {
                 let dy = top + ri - yi;
                 let dsq = r_sq - dy * dy;
                 if dsq < 0 { continue; }
+                // 整数近似(isqrt等)も可能だが、丸め誤差でピクセル欠けが生じるため精度を優先してf64 sqrtを使用
                 let dx = (dsq as f64).sqrt() as i64;
                 (left + ri - dx, right - ri + dx)
             } else if yi >= bottom - ri {
                 let dy = yi - (bottom - ri) + 1;
                 let dsq = r_sq - dy * dy;
                 if dsq < 0 { continue; }
+                // 整数近似(isqrt等)も可能だが、丸め誤差でピクセル欠けが生じるため精度を優先してf64 sqrtを使用
                 let dx = (dsq as f64).sqrt() as i64;
                 (left + ri - dx, right - ri + dx)
             } else {
@@ -246,7 +253,7 @@ impl Canvas {
                 self.pixels[s..s + (ex - sx)].fill(c32);
             } else {
                 for x in sx..ex {
-                    self.blend_unchecked(x, y, color);
+                    self.blend_at(x, y, color);
                 }
             }
         }
@@ -258,11 +265,12 @@ impl Canvas {
         if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
             return;
         }
-        self.blend_unchecked(x as usize, y as usize, src);
+        self.blend_at(x as usize, y as usize, src);
     }
 
+    /// Alpha-composite `src` onto the pixel at `(x, y)` (indices must be in bounds).
     #[inline]
-    fn blend_unchecked(&mut self, x: usize, y: usize, src: Color) {
+    fn blend_at(&mut self, x: usize, y: usize, src: Color) {
         if src.a == 0 { return; }
         let idx = y * self.width as usize + x;
         if src.a == 255 {
