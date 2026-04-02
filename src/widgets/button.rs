@@ -3,7 +3,7 @@ use crate::{
     event::{EventState, UiEvent},
     layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size},
     text::FontManager,
-    widgets::Widget,
+    widgets::{next_widget_id, Widget},
 };
 
 pub struct Button {
@@ -21,6 +21,10 @@ pub struct Button {
 }
 
 impl Button {
+    pub fn new_auto(label: impl Into<String>) -> Self {
+        Self::new(next_widget_id(), label)
+    }
+
     pub fn new(id: u64, label: impl Into<String>) -> Self {
         let mut style = LayoutStyle::default();
         style.padding = EdgeInsets::all(10.0);

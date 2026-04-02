@@ -42,4 +42,18 @@ mod tests {
         assert!(root.find_by_id(3).is_some());
         assert!(root.find_by_id(999).is_none());
     }
+
+    #[test]
+    fn auto_generated_widget_ids_are_unique() {
+        let a = widgets::next_widget_id();
+        let b = widgets::next_widget_id();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn auto_widget_constructors_produce_distinct_ids() {
+        let text = Text::new_auto("a");
+        let button = Button::new_auto("b");
+        assert_ne!(text.id(), button.id());
+    }
 }
