@@ -1,4 +1,8 @@
-# rust2d_ui (repository: rust-GL)
+# rust2d_ui
+
+> Repository note: The repository is named rust-GL for historical reasons.
+> This crate does not use OpenGL — it is a pure software rasteriser built on softbuffer.
+
 
 A pure-Rust 2D UI experiment using:
 - `winit` (window/event loop)

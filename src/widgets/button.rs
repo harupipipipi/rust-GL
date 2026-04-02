@@ -1,7 +1,7 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size},
+    layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
     text::FontManager,
     widgets::{next_widget_id, Widget},
 };
@@ -65,7 +65,7 @@ impl Widget for Button {
 
     fn layout(&mut self, constraints: BoxConstraints, x: i32, y: i32, fonts: &FontManager) -> LayoutNode {
         let size = self.desired_size(constraints, fonts);
-        LayoutNode::new(self.id, x, y, size.width as u32, size.height as u32)
+        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -81,13 +81,13 @@ impl Widget for Button {
         canvas.draw_rounded_rect(rect, 8, bg);
         canvas.draw_line(rect.x, rect.y, rect.x + rect.width as i32 - 1, rect.y, Color::GRAY_600);
 
-        let text_y = rect.y + (rect.height as f32 * 0.5 - self.font_size * 0.5) as i32;
+        let text_y = rect.y + f32_to_i32(rect.height as f32 * 0.5 - self.font_size * 0.5);
         fonts.draw_text(
             canvas,
             &self.label,
-            rect.x + self.style.padding.left as i32,
+            rect.x + f32_to_i32(self.style.padding.left),
             text_y,
-            Some((rect.width as f32 - self.style.padding.horizontal()) as u32),
+            Some(f32_to_u32(rect.width as f32 - self.style.padding.horizontal())),
             self.font_size,
             self.text_color,
         );

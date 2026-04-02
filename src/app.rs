@@ -54,7 +54,8 @@ impl App {
 
     pub fn demo(width: u32, height: u32) -> Result<Self, AppError> {
         let mut app = Self::new(width, height)?;
-        app.root.push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
+        app.root
+            .push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
         app.root.push(Button::new_auto("押してください").on_click(|| {
             println!("button clicked");
         }));
@@ -62,11 +63,10 @@ impl App {
     }
 
     pub fn request_layout(&mut self) {
-        let constraints = BoxConstraints::tight(self.canvas.width() as f32, self.canvas.height() as f32);
+        let constraints =
+            BoxConstraints::tight(self.canvas.width() as f32, self.canvas.height() as f32);
         self.layout_tree = Some(self.root.layout(constraints, 0, 0, &self.fonts));
-        if let Some(layout) = &self.layout_tree {
-            self.event_state.mark_dirty(layout.bounds);
-        }
+        self.event_state.mark_full_redraw();
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -76,9 +76,9 @@ impl App {
 
     pub fn handle_ui_event(&mut self, event: UiEvent) {
         match event {
-            UiEvent::MouseMove { x, y } => self.event_state.cursor = (x, y),
-            UiEvent::MouseDown { x, y } => self.event_state.cursor = (x, y),
-            UiEvent::MouseUp { x, y } => self.event_state.cursor = (x, y),
+            UiEvent::MouseMove { x, y } | UiEvent::MouseDown { x, y } | UiEvent::MouseUp { x, y } => {
+                self.event_state.cursor = (x, y);
+            }
         }
 
         if let Some(layout) = &self.layout_tree {
@@ -88,20 +88,26 @@ impl App {
         }
     }
 
-    pub fn redraw(&mut self) {
-        let dirty = self.event_state.take_dirty_regions();
-        if dirty.is_empty() {
-            return;
+    /// Returns true if pixels were actually updated.
+    pub fn redraw(&mut self) -> bool {
+        if !self.event_state.take_needs_redraw() {
+            return false;
         }
 
         if let Some(layout) = &self.layout_tree {
             self.canvas.clear(self.background);
             self.root.draw(&mut self.canvas, layout, &self.fonts);
         }
+        true
     }
 
     pub fn pixels(&self) -> &[u32] {
         self.canvas.pixels()
+    }
+
+    /// Read cursor position without borrowing the whole App mutably.
+    pub fn cursor(&self) -> (f32, f32) {
+        self.event_state.cursor
     }
 }
 
@@ -139,6 +145,7 @@ pub fn run() -> Result<(), AppError> {
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => target.exit(),
+
                     WindowEvent::Resized(new_size) => {
                         let _ = surface.resize(
                             NonZeroU32::new(new_size.width.max(1)).unwrap(),
@@ -147,6 +154,7 @@ pub fn run() -> Result<(), AppError> {
                         app_ref.borrow_mut().resize(new_size.width, new_size.height);
                         window.request_redraw();
                     }
+
                     WindowEvent::CursorMoved { position, .. } => {
                         app_ref.borrow_mut().handle_ui_event(UiEvent::MouseMove {
                             x: position.x as f32,
@@ -154,12 +162,15 @@ pub fn run() -> Result<(), AppError> {
                         });
                         window.request_redraw();
                     }
+
                     WindowEvent::MouseInput {
                         state,
                         button: MouseButton::Left,
                         ..
                     } => {
-                        let pos = app_ref.borrow().event_state.cursor;
+                        // Read cursor position into a local first, then drop
+                        // the immutable borrow before taking a mutable one.
+                        let pos = { app_ref.borrow().cursor() };
                         let ui_event = if state == ElementState::Pressed {
                             UiEvent::MouseDown { x: pos.0, y: pos.1 }
                         } else {
@@ -168,15 +179,17 @@ pub fn run() -> Result<(), AppError> {
                         app_ref.borrow_mut().handle_ui_event(ui_event);
                         window.request_redraw();
                     }
-                    WindowEvent::RedrawRequested => {
-                        let mut app = app_ref.borrow_mut();
-                        app.redraw();
 
-                        if let Ok(mut buffer) = surface.buffer_mut() {
-                            buffer.copy_from_slice(app.pixels());
-                            let _ = buffer.present();
+                    WindowEvent::RedrawRequested => {
+                        let mut a = app_ref.borrow_mut();
+                        if a.redraw() {
+                            if let Ok(mut buffer) = surface.buffer_mut() {
+                                buffer.copy_from_slice(a.pixels());
+                                let _ = buffer.present();
+                            }
                         }
                     }
+
                     _ => {}
                 },
                 Event::AboutToWait => {}

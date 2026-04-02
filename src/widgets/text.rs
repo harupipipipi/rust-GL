@@ -1,7 +1,7 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size},
+    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
     text::FontManager,
     widgets::{next_widget_id, Widget},
 };
@@ -58,14 +58,14 @@ impl Widget for Text {
 
     fn layout(&mut self, constraints: BoxConstraints, x: i32, y: i32, fonts: &FontManager) -> LayoutNode {
         let desired = constraints.constrain(self.desired_size(constraints, fonts));
-        LayoutNode::new(self.id, x, y, desired.width as u32, desired.height as u32)
+        LayoutNode::new(self.id, x, y, f32_to_u32(desired.width), f32_to_u32(desired.height))
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
         let rect = layout.bounds;
-        let tx = rect.x + self.style.padding.left as i32;
-        let ty = rect.y + self.style.padding.top as i32;
-        let max_w = (rect.width as f32 - self.style.padding.horizontal()).max(0.0) as u32;
+        let tx = rect.x + f32_to_i32(self.style.padding.left);
+        let ty = rect.y + f32_to_i32(self.style.padding.top);
+        let max_w = f32_to_u32((rect.width as f32 - self.style.padding.horizontal()).max(0.0));
 
         fonts.draw_text(
             canvas,
