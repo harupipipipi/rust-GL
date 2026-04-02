@@ -24,10 +24,12 @@ impl EdgeInsets {
         }
     }
 
+    #[inline]
     pub fn horizontal(&self) -> f32 {
         self.left + self.right
     }
 
+    #[inline]
     pub fn vertical(&self) -> f32 {
         self.top + self.bottom
     }
@@ -92,6 +94,18 @@ impl Default for LayoutStyle {
             wrap_text: true,
         }
     }
+}
+
+/// Helper: convert f32 to u32 with rounding, clamping negative to 0.
+#[inline]
+pub fn f32_to_u32(v: f32) -> u32 {
+    v.round().max(0.0) as u32
+}
+
+/// Helper: convert f32 to i32 with rounding.
+#[inline]
+pub fn f32_to_i32(v: f32) -> i32 {
+    v.round() as i32
 }
 
 #[derive(Debug, Clone)]

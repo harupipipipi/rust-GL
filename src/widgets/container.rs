@@ -1,7 +1,7 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutDirection, LayoutNode, LayoutStyle},
+    layout::{BoxConstraints, LayoutDirection, LayoutNode, LayoutStyle, f32_to_i32, f32_to_u32},
     text::FontManager,
     widgets::{next_widget_id, Widget},
 };
@@ -44,10 +44,12 @@ impl Widget for Container {
 
     fn layout(&mut self, constraints: BoxConstraints, x: i32, y: i32, fonts: &FontManager) -> LayoutNode {
         let width = constraints.max_width.max(constraints.min_width);
-        let mut cursor_x = x + self.style.padding.left as i32;
-        let mut cursor_y = y + self.style.padding.top as i32;
+        let mut cursor_x = x + f32_to_i32(self.style.padding.left);
+        let mut cursor_y = y + f32_to_i32(self.style.padding.top);
 
-        let mut node = LayoutNode::new(self.id, x, y, width as u32, constraints.max_height as u32);
+        // Start with zero height — we will compute the real height from
+        // children and then clamp to constraints.
+        let mut node = LayoutNode::new(self.id, x, y, f32_to_u32(width), 0);
         let child_max_width = width - self.style.padding.horizontal();
         let mut used_main: f32 = 0.0;
         let mut max_cross: f32 = 0.0;
@@ -66,12 +68,12 @@ impl Widget for Container {
 
             match self.style.direction {
                 LayoutDirection::Vertical => {
-                    cursor_y += child_h as i32 + self.style.gap as i32;
+                    cursor_y += child_h.round() as i32 + self.style.gap.round() as i32;
                     used_main += child_h + self.style.gap;
                     max_cross = max_cross.max(child_w);
                 }
                 LayoutDirection::Horizontal => {
-                    cursor_x += child_w as i32 + self.style.gap as i32;
+                    cursor_x += child_w.round() as i32 + self.style.gap.round() as i32;
                     used_main += child_w + self.style.gap;
                     max_cross = max_cross.max(child_h);
                 }
@@ -86,7 +88,7 @@ impl Widget for Container {
             LayoutDirection::Horizontal => max_cross + self.style.padding.vertical(),
         };
 
-        node.bounds.height = total_height.clamp(constraints.min_height, constraints.max_height) as u32;
+        node.bounds.height = f32_to_u32(total_height.clamp(constraints.min_height, constraints.max_height));
         node
     }
 
