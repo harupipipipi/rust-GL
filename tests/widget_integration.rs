@@ -19,54 +19,33 @@ fn button_full_state_transition() {
     let click_count = Arc::new(AtomicU32::new(0));
     let cc = click_count.clone();
 
-    let mut btn = Button::new(WidgetId::manual(1), "Test")
-        .on_click(move || {
-            cc.fetch_add(1, Ordering::SeqCst);
-        });
+    let mut btn = Button::new(WidgetId::manual(1), "Test").on_click(move || {
+        cc.fetch_add(1, Ordering::SeqCst);
+    });
     let layout = LayoutNode::new(WidgetId::manual(1), 0, 0, 100, 40);
     let mut es = EventState::default();
 
     // 1. Move outside — no change (already not hovered).
-    let changed = btn.handle_event(
-        &UiEvent::MouseMove { x: 200.0, y: 200.0 },
-        &mut es,
-        &layout,
-    );
+    let changed = btn.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
     assert!(!changed, "move outside initially should not change");
 
     // 2. Hover in.
-    let changed = btn.handle_event(
-        &UiEvent::MouseMove { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    let changed = btn.handle_event(&UiEvent::MouseMove { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(changed, "entering hover region should change");
 
     // 3. Mouse down.
-    let changed = btn.handle_event(
-        &UiEvent::MouseDown { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    let changed = btn.handle_event(&UiEvent::MouseDown { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(changed, "mouse down should change");
     assert_eq!(es.pressed, Some(WidgetId::manual(1)));
     assert_eq!(click_count.load(Ordering::SeqCst), 0, "click not yet fired");
 
     // 4. Mouse up inside — fires click.
-    let changed = btn.handle_event(
-        &UiEvent::MouseUp { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    let changed = btn.handle_event(&UiEvent::MouseUp { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(changed, "mouse up should change");
     assert_eq!(click_count.load(Ordering::SeqCst), 1, "click should fire");
 
     // 5. Leave hover.
-    let changed = btn.handle_event(
-        &UiEvent::MouseMove { x: 200.0, y: 200.0 },
-        &mut es,
-        &layout,
-    );
+    let changed = btn.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
     assert!(changed, "leaving hover should change");
 }
 
@@ -75,10 +54,9 @@ fn button_press_then_release_outside_no_click() {
     let click_count = Arc::new(AtomicU32::new(0));
     let cc = click_count.clone();
 
-    let mut btn = Button::new(WidgetId::manual(2), "Test")
-        .on_click(move || {
-            cc.fetch_add(1, Ordering::SeqCst);
-        });
+    let mut btn = Button::new(WidgetId::manual(2), "Test").on_click(move || {
+        cc.fetch_add(1, Ordering::SeqCst);
+    });
     let layout = LayoutNode::new(WidgetId::manual(2), 0, 0, 100, 40);
     let mut es = EventState::default();
 
@@ -98,18 +76,10 @@ fn button_double_hover_no_duplicate_change() {
     let layout = LayoutNode::new(WidgetId::manual(3), 0, 0, 100, 40);
     let mut es = EventState::default();
 
-    let c1 = btn.handle_event(
-        &UiEvent::MouseMove { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    let c1 = btn.handle_event(&UiEvent::MouseMove { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(c1);
 
-    let c2 = btn.handle_event(
-        &UiEvent::MouseMove { x: 51.0, y: 21.0 },
-        &mut es,
-        &layout,
-    );
+    let c2 = btn.handle_event(&UiEvent::MouseMove { x: 51.0, y: 21.0 }, &mut es, &layout);
     assert!(!c2, "already hovered, no state transition");
 }
 
@@ -174,11 +144,7 @@ fn take_needs_redraw_timing() {
     let mut btn = Button::new(WidgetId::manual(20), "Click");
     let layout = LayoutNode::new(WidgetId::manual(20), 0, 0, 100, 40);
 
-    btn.handle_event(
-        &UiEvent::MouseMove { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    btn.handle_event(&UiEvent::MouseMove { x: 50.0, y: 20.0 }, &mut es, &layout);
     assert!(es.take_needs_redraw(), "hover should request redraw");
     assert!(!es.take_needs_redraw(), "second take should be false");
 }
@@ -190,16 +156,8 @@ fn take_needs_redraw_multiple_events_single_take() {
     let mut btn = Button::new(WidgetId::manual(21), "X");
     let layout = LayoutNode::new(WidgetId::manual(21), 0, 0, 100, 40);
 
-    btn.handle_event(
-        &UiEvent::MouseMove { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
-    btn.handle_event(
-        &UiEvent::MouseDown { x: 50.0, y: 20.0 },
-        &mut es,
-        &layout,
-    );
+    btn.handle_event(&UiEvent::MouseMove { x: 50.0, y: 20.0 }, &mut es, &layout);
+    btn.handle_event(&UiEvent::MouseDown { x: 50.0, y: 20.0 }, &mut es, &layout);
 
     assert!(es.take_needs_redraw());
     assert!(!es.take_needs_redraw());
@@ -217,16 +175,12 @@ fn duplicate_manual_id_both_receive_events() {
     let cb = click_b.clone();
 
     let mut container = Container::new(WidgetId::manual(30));
-    container.push(
-        Button::new(WidgetId::manual(99), "A").on_click(move || {
-            ca.fetch_add(1, Ordering::SeqCst);
-        }),
-    );
-    container.push(
-        Button::new(WidgetId::manual(99), "B").on_click(move || {
-            cb.fetch_add(1, Ordering::SeqCst);
-        }),
-    );
+    container.push(Button::new(WidgetId::manual(99), "A").on_click(move || {
+        ca.fetch_add(1, Ordering::SeqCst);
+    }));
+    container.push(Button::new(WidgetId::manual(99), "B").on_click(move || {
+        cb.fetch_add(1, Ordering::SeqCst);
+    }));
 
     let mut root_layout = LayoutNode::new(WidgetId::manual(30), 0, 0, 200, 200);
     root_layout.add_child(LayoutNode::new(WidgetId::manual(99), 0, 0, 200, 40));

@@ -8,28 +8,39 @@
 /// An RGBA colour with 8 bits per channel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color {
+    /// Red channel.
     pub r: u8,
+    /// Green channel.
     pub g: u8,
+    /// Blue channel.
     pub b: u8,
+    /// Alpha channel (255 = fully opaque).
     pub a: u8,
 }
 
 impl Color {
+    /// Pure white.
     pub const WHITE: Self = Self::rgba(255, 255, 255, 255);
+    /// Pure black.
     pub const BLACK: Self = Self::rgba(0, 0, 0, 255);
+    /// Fully transparent.
     pub const TRANSPARENT: Self = Self::rgba(0, 0, 0, 0);
+    /// Light gray (245).
     pub const GRAY_100: Self = Self::rgba(245, 245, 245, 255);
+    /// Medium-light gray (220).
     pub const GRAY_300: Self = Self::rgba(220, 220, 220, 255);
+    /// Medium-dark gray (95).
     pub const GRAY_600: Self = Self::rgba(95, 95, 95, 255);
+    /// A medium blue.
     pub const BLUE: Self = Self::rgba(70, 120, 220, 255);
 
+    /// Create a colour from RGBA components.
     #[inline]
     pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
 
     /// Convert to `0x00RRGGBB` (softbuffer format). Alpha is dropped.
-    #[must_use]
     #[inline]
     pub const fn to_u32(self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
@@ -41,27 +52,35 @@ impl Color {
 /// Axis-aligned rectangle: signed origin, unsigned extent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
+    /// X coordinate of the top-left corner.
     pub x: i32,
+    /// Y coordinate of the top-left corner.
     pub y: i32,
+    /// Width in pixels.
     pub width: u32,
+    /// Height in pixels.
     pub height: u32,
 }
 
-/// Practical upper bound for dimensions.
-/// Previous value `i32::MAX` could theoretically permit ~16 EiB allocations.
-/// 16 384 × 16 384 × 4 bytes ≈ 1 GiB — a safe practical limit.
-const MAX_EXTENT: u32 = 16_384;
+/// Practical upper bound for dimensions — fits in `i32` after cast.
+const MAX_EXTENT: u32 = i32::MAX as u32;
 
 impl Rect {
+    /// A zero-sized rect at the origin.
     pub const ZERO: Self = Self::new(0, 0, 0, 0);
 
+    /// Create a new rectangle.
     #[inline]
     pub const fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Hit-test with `f32` coordinates (half-open: `[x, x+w)`).
-    #[must_use]
     #[inline]
     pub fn contains(&self, px: f32, py: f32) -> bool {
         let (x0, y0) = (self.x as f64, self.y as f64);
@@ -71,10 +90,13 @@ impl Rect {
     }
 
     /// Smallest rect enclosing both. Zero-area rects are treated as empty.
-    #[must_use]
     pub fn union(&self, other: &Rect) -> Rect {
-        if self.is_empty() { return *other; }
-        if other.is_empty() { return *self; }
+        if self.is_empty() {
+            return *other;
+        }
+        if other.is_empty() {
+            return *self;
+        }
 
         let ax1 = self.x as i64 + self.width as i64;
         let ay1 = self.y as i64 + self.height as i64;
@@ -89,6 +111,7 @@ impl Rect {
         Rect::new(x0, y0, (x1 - x0).max(0) as u32, (y1 - y0).max(0) as u32)
     }
 
+    /// Returns `true` if width or height is zero.
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.width == 0 || self.height == 0
@@ -114,9 +137,11 @@ pub struct Canvas {
     width: u32,
     height: u32,
     pixels: Vec<u32>,
+    clip_rect: Option<Rect>,
 }
 
 impl Canvas {
+    /// Create a new canvas with the given dimensions, filled with black.
     pub fn new(width: u32, height: u32) -> Self {
         let w = width.min(MAX_EXTENT);
         let h = height.min(MAX_EXTENT);
@@ -124,6 +149,7 @@ impl Canvas {
             width: w,
             height: h,
             pixels: vec![0u32; w as usize * h as usize],
+            clip_rect: None,
         }
     }
 
@@ -148,11 +174,26 @@ impl Canvas {
         self.pixels = buf;
         self.width = nw;
         self.height = nh;
+        self.clip_rect = None;
     }
 
-    #[inline] pub fn width(&self) -> u32 { self.width }
-    #[inline] pub fn height(&self) -> u32 { self.height }
-    #[inline] pub fn pixels(&self) -> &[u32] { &self.pixels }
+    /// Width of the canvas in pixels.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Height of the canvas in pixels.
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Access the raw pixel data.
+    #[inline]
+    pub fn pixels(&self) -> &[u32] {
+        &self.pixels
+    }
 
     /// Fill every pixel.
     pub fn clear(&mut self, color: Color) {
@@ -164,7 +205,9 @@ impl Canvas {
     /// Opaque fills use `[u32]::fill` (one call per row) for throughput.
     pub fn fill_rect(&mut self, rect: Rect, color: Color) {
         let (x0, y0, x1, y1) = self.clip(&rect);
-        if x0 >= x1 || y0 >= y1 { return; }
+        if x0 >= x1 || y0 >= y1 {
+            return;
+        }
 
         if color.a == 255 {
             let c = color.to_u32();
@@ -176,7 +219,7 @@ impl Canvas {
         } else if color.a > 0 {
             for y in y0..y1 {
                 for x in x0..x1 {
-                    self.blend_at(x, y, color);
+                    self.blend_unchecked(x, y, color);
                 }
             }
         }
@@ -192,10 +235,18 @@ impl Canvas {
 
         loop {
             self.blend_pixel(x0, y0, color);
-            if x0 == x1 && y0 == y1 { break; }
+            if x0 == x1 && y0 == y1 {
+                break;
+            }
             let e2 = 2 * err;
-            if e2 >= dy { err += dy; x0 += sx; }
-            if e2 <= dx { err += dx; y0 += sy; }
+            if e2 >= dy {
+                err += dy;
+                x0 += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y0 += sy;
+            }
         }
     }
 
@@ -203,7 +254,9 @@ impl Canvas {
     /// check in the non-corner region).
     pub fn draw_rounded_rect(&mut self, rect: Rect, radius: u32, color: Color) {
         let (cx0, cy0, cx1, cy1) = self.clip(&rect);
-        if cx0 >= cx1 || cy0 >= cy1 { return; }
+        if cx0 >= cx1 || cy0 >= cy1 {
+            return;
+        }
 
         let max_r = (rect.width / 2).min(rect.height / 2);
         let r = radius.min(max_r);
@@ -213,15 +266,15 @@ impl Canvas {
             return;
         }
 
-        let left   = rect.x as i64;
-        let top    = rect.y as i64;
-        let right  = left + rect.width as i64;
-        let bottom = top  + rect.height as i64;
-        let ri     = r as i64;
-        let r_sq   = ri * ri;
-        let c32    = color.to_u32();
+        let left = rect.x as i64;
+        let top = rect.y as i64;
+        let right = left + rect.width as i64;
+        let bottom = top + rect.height as i64;
+        let ri = r as i64;
+        let r_sq = ri * ri;
+        let c32 = color.to_u32();
         let opaque = color.a == 255;
-        let w      = self.width as usize;
+        let w = self.width as usize;
 
         for y in cy0..cy1 {
             let yi = y as i64;
@@ -229,15 +282,17 @@ impl Canvas {
             let (row_l, row_r) = if yi < top + ri {
                 let dy = top + ri - yi;
                 let dsq = r_sq - dy * dy;
-                if dsq < 0 { continue; }
-                // 整数近似(isqrt等)も可能だが、丸め誤差でピクセル欠けが生じるため精度を優先してf64 sqrtを使用
+                if dsq < 0 {
+                    continue;
+                }
                 let dx = (dsq as f64).sqrt() as i64;
                 (left + ri - dx, right - ri + dx)
             } else if yi >= bottom - ri {
                 let dy = yi - (bottom - ri) + 1;
                 let dsq = r_sq - dy * dy;
-                if dsq < 0 { continue; }
-                // 整数近似(isqrt等)も可能だが、丸め誤差でピクセル欠けが生じるため精度を優先してf64 sqrtを使用
+                if dsq < 0 {
+                    continue;
+                }
                 let dx = (dsq as f64).sqrt() as i64;
                 (left + ri - dx, right - ri + dx)
             } else {
@@ -246,14 +301,16 @@ impl Canvas {
 
             let sx = (row_l.max(cx0 as i64)) as usize;
             let ex = (row_r.min(cx1 as i64)) as usize;
-            if sx >= ex { continue; }
+            if sx >= ex {
+                continue;
+            }
 
             if opaque {
                 let s = y * w + sx;
                 self.pixels[s..s + (ex - sx)].fill(c32);
             } else {
                 for x in sx..ex {
-                    self.blend_at(x, y, color);
+                    self.blend_unchecked(x, y, color);
                 }
             }
         }
@@ -265,37 +322,56 @@ impl Canvas {
         if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
             return;
         }
-        self.blend_at(x as usize, y as usize, src);
+        self.blend_unchecked(x as usize, y as usize, src);
     }
 
-    /// Alpha-composite `src` onto the pixel at `(x, y)` (indices must be in bounds).
     #[inline]
-    fn blend_at(&mut self, x: usize, y: usize, src: Color) {
-        if src.a == 0 { return; }
+    fn blend_unchecked(&mut self, x: usize, y: usize, src: Color) {
+        if src.a == 0 {
+            return;
+        }
         let idx = y * self.width as usize + x;
         if src.a == 255 {
             self.pixels[idx] = src.to_u32();
             return;
         }
 
-        let a   = src.a as u32;
+        let a = src.a as u32;
         let inv = 255 - a;
         let dst = self.pixels[idx];
 
         let out_r = div255(src.r as u32 * a + ((dst >> 16) & 0xFF) * inv);
-        let out_g = div255(src.g as u32 * a + ((dst >> 8)  & 0xFF) * inv);
-        let out_b = div255(src.b as u32 * a + ( dst        & 0xFF) * inv);
+        let out_g = div255(src.g as u32 * a + ((dst >> 8) & 0xFF) * inv);
+        let out_b = div255(src.b as u32 * a + (dst & 0xFF) * inv);
 
         self.pixels[idx] = (out_r << 16) | (out_g << 8) | out_b;
     }
 
     #[inline]
     fn clip(&self, r: &Rect) -> (usize, usize, usize, usize) {
-        let x0 = r.x.max(0) as usize;
-        let y0 = r.y.max(0) as usize;
-        let x1 = r.right_i64().min(self.width as i64).max(0) as usize;
-        let y1 = r.bottom_i64().min(self.height as i64).max(0) as usize;
+        let mut x0 = r.x.max(0) as usize;
+        let mut y0 = r.y.max(0) as usize;
+        let mut x1 = r.right_i64().min(self.width as i64).max(0) as usize;
+        let mut y1 = r.bottom_i64().min(self.height as i64).max(0) as usize;
+
+        if let Some(ref cr) = self.clip_rect {
+            x0 = x0.max(cr.x.max(0) as usize);
+            y0 = y0.max(cr.y.max(0) as usize);
+            x1 = x1.min(cr.right_i64().max(0) as usize);
+            y1 = y1.min(cr.bottom_i64().max(0) as usize);
+        }
+
         (x0, y0, x1, y1)
+    }
+
+    /// Set a clipping rectangle for subsequent drawing operations.
+    pub fn set_clip(&mut self, rect: Rect) {
+        self.clip_rect = Some(rect);
+    }
+
+    /// Clear the clipping rectangle.
+    pub fn clear_clip(&mut self) {
+        self.clip_rect = None;
     }
 }
 

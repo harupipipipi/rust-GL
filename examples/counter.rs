@@ -45,24 +45,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new(size.width, size.height)?;
 
     // Build widget tree
-    app.root
-        .push(Text::new_auto("Counter Example — Click the button to increment"));
+    app.root.push(Text::new_auto(
+        "Counter Example — Click the button to increment",
+    ));
 
     let c = counter.clone();
-    app.root.push(
-        Button::new_auto("+1").on_click(move || {
-            let new_val = c.fetch_add(1, Ordering::SeqCst) + 1;
-            println!("Counter: {new_val}");
-        }),
-    );
+    app.root.push(Button::new_auto("+1").on_click(move || {
+        let new_val = c.fetch_add(1, Ordering::SeqCst) + 1;
+        println!("Counter: {new_val}");
+    }));
 
     let c2 = counter.clone();
-    app.root.push(
-        Button::new_auto("Reset").on_click(move || {
-            c2.store(0, Ordering::SeqCst);
-            println!("Counter reset to 0");
-        }),
-    );
+    app.root.push(Button::new_auto("Reset").on_click(move || {
+        c2.store(0, Ordering::SeqCst);
+        println!("Counter reset to 0");
+    }));
 
     app.request_layout();
     window.request_redraw();

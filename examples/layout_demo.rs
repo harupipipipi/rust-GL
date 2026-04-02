@@ -10,9 +10,7 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use rust2d_ui::{
-    App, Button, Color, Container, EdgeInsets, LayoutDirection, Text, UiEvent,
-};
+use rust2d_ui::{App, Button, Color, Container, EdgeInsets, LayoutDirection, Text, UiEvent};
 
 use softbuffer::{Context, Surface};
 use winit::{
@@ -44,8 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new(size.width, size.height)?;
 
     // Title
-    app.root
-        .push(Text::new_auto("Layout Demo — Vertical > Horizontal nesting"));
+    app.root.push(Text::new_auto(
+        "Layout Demo — Vertical > Horizontal nesting",
+    ));
 
     // ── Row 1: Horizontal, gap=20, padding=12 ──────────────────
     let mut row1 = Container::new_auto();

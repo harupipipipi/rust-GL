@@ -3,19 +3,27 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
 
+/// A clickable button that displays a text label.
 pub struct Button {
     id: WidgetId,
+    /// The label displayed on the button.
     pub label: String,
+    /// Layout style (padding, gap, etc.).
     pub style: LayoutStyle,
+    /// Font size in pixels.
     pub font_size: f32,
+    /// Background colour in normal state.
     pub normal_bg: Color,
+    /// Background colour when hovered.
     pub hover_bg: Color,
+    /// Background colour when pressed.
     pub pressed_bg: Color,
+    /// Text colour.
     pub text_color: Color,
     is_hovered: bool,
     is_pressed: bool,
@@ -23,10 +31,12 @@ pub struct Button {
 }
 
 impl Button {
+    /// Create a new button with an auto-generated widget ID.
     pub fn new_auto(label: impl Into<String>) -> Self {
         Self::new(next_widget_id(), label)
     }
 
+    /// Create a new button with a specific widget ID.
     pub fn new(id: WidgetId, label: impl Into<String>) -> Self {
         let mut style = LayoutStyle::default();
         style.padding = EdgeInsets::all(10.0);
@@ -46,6 +56,7 @@ impl Button {
         }
     }
 
+    /// Attach a click callback. Returns `self` for builder-style chaining.
     pub fn on_click(mut self, f: impl FnMut() + 'static) -> Self {
         self.on_click = Some(Box::new(f));
         self
@@ -61,7 +72,13 @@ impl Button {
 }
 
 impl Widget for Button {
-    fn id(&self) -> WidgetId { self.id }
+    fn id(&self) -> WidgetId {
+        self.id
+    }
+
+    fn debug_name(&self) -> &str {
+        "Button"
+    }
 
     fn layout(
         &mut self,
@@ -71,7 +88,13 @@ impl Widget for Button {
         fonts: &FontManager,
     ) -> LayoutNode {
         let size = self.desired_size(constraints, fonts);
-        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(size.width),
+            f32_to_u32(size.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -87,8 +110,10 @@ impl Widget for Button {
         canvas.draw_rounded_rect(rect, 8, bg);
         if rect.width > 0 {
             canvas.draw_line(
-                rect.x, rect.y,
-                rect.x + rect.width as i32 - 1, rect.y,
+                rect.x,
+                rect.y,
+                rect.x + rect.width as i32 - 1,
+                rect.y,
                 Color::GRAY_600,
             );
         }
@@ -139,7 +164,9 @@ impl Widget for Button {
                         cb();
                     }
                 }
-                if was { changed = true; }
+                if was {
+                    changed = true;
+                }
             }
         }
 

@@ -338,6 +338,10 @@ impl Widget for TextInput {
         self.id
     }
 
+    fn debug_name(&self) -> &str {
+        "TextInput"
+    }
+
     fn layout(
         &mut self,
         constraints: BoxConstraints,

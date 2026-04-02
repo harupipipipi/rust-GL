@@ -121,7 +121,10 @@ fn draw_rounded_rect_1x1() {
 #[test]
 fn fill_rect_huge_coords_no_panic() {
     let mut c = test_utils::make_canvas(100, 100, Color::WHITE);
-    c.fill_rect(Rect::new(i32::MAX - 10, i32::MAX - 10, 20, 20), Color::BLACK);
+    c.fill_rect(
+        Rect::new(i32::MAX - 10, i32::MAX - 10, 20, 20),
+        Color::BLACK,
+    );
     assert!(c.pixels().iter().all(|&p| p == Color::WHITE.to_u32()));
 }
 

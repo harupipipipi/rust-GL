@@ -4,8 +4,15 @@
 //! small manual IDs.
 
 pub mod button;
+pub mod checkbox;
 pub mod container;
+pub mod divider;
+pub mod radio;
+pub mod scroll;
+pub mod slider;
+pub mod spacer;
 pub mod text;
+pub mod text_input;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -44,6 +51,9 @@ impl WidgetId {
 /// The core trait implemented by every UI widget.
 pub trait Widget {
     fn id(&self) -> WidgetId;
+
+    /// A human-readable name for debugging purposes.
+    fn debug_name(&self) -> &str;
 
     fn layout(
         &mut self,

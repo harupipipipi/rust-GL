@@ -79,11 +79,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.root.push(large_jp);
 
     // ── Button with Japanese label ──
-    app.root.push(
-        Button::new_auto("押してね！").on_click(|| {
-            println!("ボタンがクリックされました！");
-        }),
-    );
+    app.root.push(Button::new_auto("押してね！").on_click(|| {
+        println!("ボタンがクリックされました！");
+    }));
 
     app.request_layout();
     window.request_redraw();

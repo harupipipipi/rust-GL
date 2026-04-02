@@ -4,7 +4,7 @@
 //! cargo run --example hello
 //! ```
 
-use rust2d_ui::{App, Container, Text, Button};
+use rust2d_ui::{App, Button, Container, Text};
 
 /// Build a custom [`App`] with a hand-assembled widget tree.
 ///
@@ -16,11 +16,9 @@ fn build_app() -> App {
     // ── widget tree ──────────────────────────────────────────────
     let mut root = Container::new_auto();
     root.push(Text::new_auto("Hello, rust2d_ui!"));
-    root.push(
-        Button::new_auto("Click me").on_click(|| {
-            println!("🖱  button clicked!");
-        }),
-    );
+    root.push(Button::new_auto("Click me").on_click(|| {
+        println!("🖱  button clicked!");
+    }));
 
     app.root = root;
     app.request_layout();
@@ -30,10 +28,7 @@ fn build_app() -> App {
 fn main() {
     // Build the app to demonstrate the API (printed to confirm it works).
     let app = build_app();
-    println!(
-        "App built — root has {} children",
-        app.root.children.len(),
-    );
+    println!("App built — root has {} children", app.root.children.len(),);
 
     // Launch the built-in demo window.
     // NOTE: `run()` currently creates its own App internally.

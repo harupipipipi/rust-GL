@@ -19,13 +19,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-fn styled_button(
-    label: &str,
-    normal: Color,
-    hover: Color,
-    pressed: Color,
-    text: Color,
-) -> Button {
+fn styled_button(label: &str, normal: Color, hover: Color, pressed: Color, text: Color) -> Button {
     let mut btn = Button::new_auto(label);
     btn.normal_bg = normal;
     btn.hover_bg = hover;
@@ -62,9 +56,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.root.push(title);
 
     // ── Subtitle ──
-    let mut subtitle = Text::new_auto(
-        "Each button below has different normal / hover / pressed colours.",
-    );
+    let mut subtitle =
+        Text::new_auto("Each button below has different normal / hover / pressed colours.");
     subtitle.font_size = 14.0;
     subtitle.color = Color::GRAY_600;
     app.root.push(subtitle);

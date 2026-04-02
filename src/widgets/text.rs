@@ -3,24 +3,31 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
 
+/// A read-only text label.
 pub struct Text {
     id: WidgetId,
+    /// The text content to display.
     pub content: String,
+    /// Text colour.
     pub color: Color,
+    /// Font size in pixels.
     pub font_size: f32,
+    /// Layout style.
     pub style: LayoutStyle,
 }
 
 impl Text {
+    /// Create a new text widget with an auto-generated widget ID.
     pub fn new_auto(content: impl Into<String>) -> Self {
         Self::new(next_widget_id(), content)
     }
 
+    /// Create a new text widget with a specific widget ID.
     pub fn new(id: WidgetId, content: impl Into<String>) -> Self {
         Self {
             id,
@@ -54,7 +61,13 @@ impl Text {
 }
 
 impl Widget for Text {
-    fn id(&self) -> WidgetId { self.id }
+    fn id(&self) -> WidgetId {
+        self.id
+    }
+
+    fn debug_name(&self) -> &str {
+        "Text"
+    }
 
     fn layout(
         &mut self,
@@ -64,7 +77,13 @@ impl Widget for Text {
         fonts: &FontManager,
     ) -> LayoutNode {
         let desired = constraints.constrain(self.desired_size(constraints, fonts));
-        LayoutNode::new(self.id, x, y, f32_to_u32(desired.width), f32_to_u32(desired.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(desired.width),
+            f32_to_u32(desired.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -73,7 +92,15 @@ impl Widget for Text {
         let ty = rect.y + f32_to_i32(self.style.padding.top);
         let max_w = f32_to_u32((rect.width as f32 - self.style.padding.horizontal()).max(0.0));
 
-        fonts.draw_text(canvas, &self.content, tx, ty, Some(max_w), self.font_size, self.color);
+        fonts.draw_text(
+            canvas,
+            &self.content,
+            tx,
+            ty,
+            Some(max_w),
+            self.font_size,
+            self.color,
+        );
     }
 
     fn handle_event(
