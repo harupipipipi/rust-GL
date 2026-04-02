@@ -34,8 +34,8 @@ impl FontManager {
     }
 
     pub fn measure_text(&self, text: &str, px: f32) -> (f32, f32) {
-        let mut width = 0.0;
-        let mut max_h = 0.0;
+        let mut width: f32 = 0.0;
+        let mut max_h: f32 = 0.0;
         for ch in text.chars() {
             let metrics = self.font.metrics(ch, px);
             width += metrics.advance_width;

@@ -33,7 +33,7 @@ impl Text {
             vec![self.content.clone()]
         };
 
-        let mut max_line = 0.0;
+        let mut max_line: f32 = 0.0;
         for line in &lines {
             let (w, _) = fonts.measure_text(line, self.font_size);
             max_line = max_line.max(w);
