@@ -1,13 +1,15 @@
+//! A clickable button widget with hover / pressed states.
+
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
     layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
     text::FontManager,
-    widgets::{next_widget_id, Widget},
+    widgets::{next_widget_id, Widget, WidgetId},
 };
 
 pub struct Button {
-    id: u64,
+    id: WidgetId,
     pub label: String,
     pub style: LayoutStyle,
     pub font_size: f32,
@@ -17,7 +19,7 @@ pub struct Button {
     pub text_color: Color,
     is_hovered: bool,
     is_pressed: bool,
-    on_click: Option<Box<dyn FnMut() + Send>>,
+    on_click: Option<Box<dyn FnMut()>>,
 }
 
 impl Button {
@@ -25,7 +27,7 @@ impl Button {
         Self::new(next_widget_id(), label)
     }
 
-    pub fn new(id: u64, label: impl Into<String>) -> Self {
+    pub fn new(id: WidgetId, label: impl Into<String>) -> Self {
         let mut style = LayoutStyle::default();
         style.padding = EdgeInsets::all(10.0);
         style.wrap_text = false;
@@ -44,7 +46,7 @@ impl Button {
         }
     }
 
-    pub fn on_click(mut self, f: impl FnMut() + Send + 'static) -> Self {
+    pub fn on_click(mut self, f: impl FnMut() + 'static) -> Self {
         self.on_click = Some(Box::new(f));
         self
     }
@@ -59,11 +61,15 @@ impl Button {
 }
 
 impl Widget for Button {
-    fn id(&self) -> u64 {
-        self.id
-    }
+    fn id(&self) -> WidgetId { self.id }
 
-    fn layout(&mut self, constraints: BoxConstraints, x: i32, y: i32, fonts: &FontManager) -> LayoutNode {
+    fn layout(
+        &mut self,
+        constraints: BoxConstraints,
+        x: i32,
+        y: i32,
+        fonts: &FontManager,
+    ) -> LayoutNode {
         let size = self.desired_size(constraints, fonts);
         LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
     }
@@ -79,7 +85,13 @@ impl Widget for Button {
         };
 
         canvas.draw_rounded_rect(rect, 8, bg);
-        canvas.draw_line(rect.x, rect.y, rect.x + rect.width as i32 - 1, rect.y, Color::GRAY_600);
+        if rect.width > 0 {
+            canvas.draw_line(
+                rect.x, rect.y,
+                rect.x + rect.width as i32 - 1, rect.y,
+                Color::GRAY_600,
+            );
+        }
 
         let text_y = rect.y + f32_to_i32(rect.height as f32 * 0.5 - self.font_size * 0.5);
         fonts.draw_text(
@@ -87,13 +99,20 @@ impl Widget for Button {
             &self.label,
             rect.x + f32_to_i32(self.style.padding.left),
             text_y,
-            Some(f32_to_u32(rect.width as f32 - self.style.padding.horizontal())),
+            Some(f32_to_u32(
+                (rect.width as f32 - self.style.padding.horizontal()).max(0.0),
+            )),
             self.font_size,
             self.text_color,
         );
     }
 
-    fn handle_event(&mut self, event: &UiEvent, state: &mut EventState, layout: &LayoutNode) -> bool {
+    fn handle_event(
+        &mut self,
+        event: &UiEvent,
+        state: &mut EventState,
+        layout: &LayoutNode,
+    ) -> bool {
         let mut changed = false;
         let rect = layout.bounds;
 
@@ -113,21 +132,19 @@ impl Widget for Button {
                 }
             }
             UiEvent::MouseUp { x, y } => {
-                let was_pressed = self.is_pressed;
+                let was = self.is_pressed;
                 self.is_pressed = false;
-                if was_pressed && rect.contains(x, y) {
+                if was && rect.contains(x, y) {
                     if let Some(cb) = self.on_click.as_mut() {
                         cb();
                     }
                 }
-                if was_pressed {
-                    changed = true;
-                }
+                if was { changed = true; }
             }
         }
 
         if changed {
-            state.mark_dirty(rect);
+            state.request_redraw();
         }
         changed
     }

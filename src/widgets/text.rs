@@ -1,13 +1,15 @@
+//! A non-interactive text label widget.
+
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
     layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
     text::FontManager,
-    widgets::{next_widget_id, Widget},
+    widgets::{next_widget_id, Widget, WidgetId},
 };
 
 pub struct Text {
-    id: u64,
+    id: WidgetId,
     pub content: String,
     pub color: Color,
     pub font_size: f32,
@@ -19,7 +21,7 @@ impl Text {
         Self::new(next_widget_id(), content)
     }
 
-    pub fn new(id: u64, content: impl Into<String>) -> Self {
+    pub fn new(id: WidgetId, content: impl Into<String>) -> Self {
         Self {
             id,
             content: content.into(),
@@ -30,9 +32,9 @@ impl Text {
     }
 
     fn desired_size(&self, constraints: BoxConstraints, fonts: &FontManager) -> Size {
-        let max_width = constraints.max_width - self.style.padding.horizontal();
+        let max_w = constraints.max_width - self.style.padding.horizontal();
         let lines = if self.style.wrap_text {
-            fonts.wrap_text(&self.content, max_width, self.font_size)
+            fonts.wrap_text(&self.content, max_w, self.font_size)
         } else {
             vec![self.content.clone()]
         };
@@ -43,20 +45,24 @@ impl Text {
             max_line = max_line.max(w);
         }
 
-        let line_h = self.font_size * 1.3;
+        let lh = fonts.line_height(self.font_size);
         Size {
             width: max_line + self.style.padding.horizontal(),
-            height: line_h * lines.len() as f32 + self.style.padding.vertical(),
+            height: lh * lines.len() as f32 + self.style.padding.vertical(),
         }
     }
 }
 
 impl Widget for Text {
-    fn id(&self) -> u64 {
-        self.id
-    }
+    fn id(&self) -> WidgetId { self.id }
 
-    fn layout(&mut self, constraints: BoxConstraints, x: i32, y: i32, fonts: &FontManager) -> LayoutNode {
+    fn layout(
+        &mut self,
+        constraints: BoxConstraints,
+        x: i32,
+        y: i32,
+        fonts: &FontManager,
+    ) -> LayoutNode {
         let desired = constraints.constrain(self.desired_size(constraints, fonts));
         LayoutNode::new(self.id, x, y, f32_to_u32(desired.width), f32_to_u32(desired.height))
     }
@@ -67,18 +73,15 @@ impl Widget for Text {
         let ty = rect.y + f32_to_i32(self.style.padding.top);
         let max_w = f32_to_u32((rect.width as f32 - self.style.padding.horizontal()).max(0.0));
 
-        fonts.draw_text(
-            canvas,
-            &self.content,
-            tx,
-            ty,
-            Some(max_w),
-            self.font_size,
-            self.color,
-        );
+        fonts.draw_text(canvas, &self.content, tx, ty, Some(max_w), self.font_size, self.color);
     }
 
-    fn handle_event(&mut self, _event: &UiEvent, _state: &mut EventState, _layout: &LayoutNode) -> bool {
+    fn handle_event(
+        &mut self,
+        _event: &UiEvent,
+        _state: &mut EventState,
+        _layout: &LayoutNode,
+    ) -> bool {
         false
     }
 }

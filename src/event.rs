@@ -1,47 +1,36 @@
-use crate::canvas::Rect;
+//! Minimal event types for the UI toolkit.
 
+/// A high-level UI event produced from raw windowing events.
 #[derive(Debug, Clone, Copy)]
 pub enum UiEvent {
     MouseMove { x: f32, y: f32 },
     MouseDown { x: f32, y: f32 },
-    MouseUp { x: f32, y: f32 },
+    MouseUp   { x: f32, y: f32 },
 }
 
+/// Shared mutable state carried through the event-dispatch tree.
 #[derive(Debug, Default)]
 pub struct EventState {
-    pub hovered: Option<u64>,
-    pub pressed: Option<u64>,
+    /// Widget currently under the cursor (if any).
+    pub hovered: Option<crate::widgets::WidgetId>,
+    /// Widget currently being pressed (if any).
+    pub pressed: Option<crate::widgets::WidgetId>,
+    /// Last known cursor position.
     pub cursor: (f32, f32),
-    dirty: Option<Rect>,
+    /// Whether any widget requested a repaint since the last frame.
     needs_redraw: bool,
 }
 
 impl EventState {
-    /// Mark a region as needing repaint. Regions are merged into a single
-    /// bounding box so the bookkeeping stays O(1).
-    pub fn mark_dirty(&mut self, rect: Rect) {
-        self.dirty = Some(match self.dirty {
-            Some(existing) => existing.union(&rect),
-            None => rect,
-        });
+    /// Mark that a repaint is needed.
+    pub fn request_redraw(&mut self) {
         self.needs_redraw = true;
     }
 
-    /// Mark the entire framebuffer as dirty (e.g. after resize).
-    pub fn mark_full_redraw(&mut self) {
-        self.needs_redraw = true;
-    }
-
-    /// Consume the dirty flag. Returns true if a redraw is needed.
+    /// Consume the redraw flag (returns `true` at most once per frame).
     pub fn take_needs_redraw(&mut self) -> bool {
         let v = self.needs_redraw;
         self.needs_redraw = false;
-        self.dirty = None;
         v
-    }
-
-    /// Peek at the current dirty bounding box (if any).
-    pub fn dirty_rect(&self) -> Option<Rect> {
-        self.dirty
     }
 }

@@ -1,4 +1,9 @@
-use std::{cell::RefCell, num::NonZeroU32, rc::Rc};
+//! Application scaffold: owns the widget tree, drives layout / draw / events.
+//!
+//! **No `Rc<RefCell<App>>`** — the `App` is moved directly into the event
+//! loop closure. Only the `Window` is reference-counted (softbuffer needs it).
+
+use std::{num::NonZeroU32, rc::Rc};
 
 use softbuffer::{Context, Surface};
 use thiserror::Error;
@@ -14,7 +19,9 @@ use crate::{
     event::{EventState, UiEvent},
     layout::BoxConstraints,
     text::{FontManager, TextError},
-    widgets::{button::Button, container::Container, text::Text, Widget},
+    widgets::{
+        button::Button, container::Container, text::Text, Widget,
+    },
 };
 
 #[derive(Debug, Error)]
@@ -27,6 +34,7 @@ pub enum AppError {
     Text(#[from] TextError),
 }
 
+/// Root application state.
 pub struct App {
     pub root: Container,
     fonts: FontManager,
@@ -54,19 +62,22 @@ impl App {
 
     pub fn demo(width: u32, height: u32) -> Result<Self, AppError> {
         let mut app = Self::new(width, height)?;
-        app.root
-            .push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
-        app.root.push(Button::new_auto("押してください").on_click(|| {
-            println!("button clicked");
-        }));
+        app.root.push(Text::new_auto("純Rust 2D UIライブラリ (日本語対応)"));
+        app.root.push(
+            Button::new_auto("押してください").on_click(|| {
+                println!("button clicked");
+            }),
+        );
         Ok(app)
     }
 
     pub fn request_layout(&mut self) {
-        let constraints =
-            BoxConstraints::tight(self.canvas.width() as f32, self.canvas.height() as f32);
-        self.layout_tree = Some(self.root.layout(constraints, 0, 0, &self.fonts));
-        self.event_state.mark_full_redraw();
+        let c = BoxConstraints::tight(
+            self.canvas.width() as f32,
+            self.canvas.height() as f32,
+        );
+        self.layout_tree = Some(self.root.layout(c, 0, 0, &self.fonts));
+        self.event_state.request_redraw();
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -76,27 +87,27 @@ impl App {
 
     pub fn handle_ui_event(&mut self, event: UiEvent) {
         match event {
-            UiEvent::MouseMove { x, y } | UiEvent::MouseDown { x, y } | UiEvent::MouseUp { x, y } => {
+            UiEvent::MouseMove { x, y }
+            | UiEvent::MouseDown { x, y }
+            | UiEvent::MouseUp { x, y } => {
                 self.event_state.cursor = (x, y);
             }
         }
 
         if let Some(layout) = &self.layout_tree {
-            if self.root.handle_event(&event, &mut self.event_state, layout) {
-                self.event_state.mark_dirty(layout.bounds);
-            }
+            let layout = layout.clone();
+            self.root.handle_event(&event, &mut self.event_state, &layout);
         }
     }
 
-    /// Returns true if pixels were actually updated.
     pub fn redraw(&mut self) -> bool {
         if !self.event_state.take_needs_redraw() {
             return false;
         }
-
         if let Some(layout) = &self.layout_tree {
+            let layout = layout.clone();
             self.canvas.clear(self.background);
-            self.root.draw(&mut self.canvas, layout, &self.fonts);
+            self.root.draw(&mut self.canvas, &layout, &self.fonts);
         }
         true
     }
@@ -104,25 +115,25 @@ impl App {
     pub fn pixels(&self) -> &[u32] {
         self.canvas.pixels()
     }
-
-    /// Read cursor position without borrowing the whole App mutably.
-    pub fn cursor(&self) -> (f32, f32) {
-        self.event_state.cursor
-    }
 }
 
+/// Create a demo window and run the event loop (blocks until close).
 pub fn run() -> Result<(), AppError> {
-    let event_loop = EventLoop::new().map_err(|e| AppError::Window(e.to_string()))?;
+    let event_loop = EventLoop::new()
+        .map_err(|e| AppError::Window(e.to_string()))?;
+
     let window = Rc::new(
         WindowBuilder::new()
             .with_title("Rust 2D UI")
-            .with_inner_size(LogicalSize::new(960.0f64, 640.0f64))
+            .with_inner_size(LogicalSize::new(960.0_f64, 640.0))
             .build(&event_loop)
             .map_err(|e| AppError::Window(e.to_string()))?,
     );
 
-    let context = Context::new(window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
-    let mut surface = Surface::new(&context, window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
+    let context =
+        Context::new(window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
+    let mut surface =
+        Surface::new(&context, window.clone()).map_err(|e| AppError::Render(e.to_string()))?;
 
     let size = window.inner_size();
     surface
@@ -132,10 +143,8 @@ pub fn run() -> Result<(), AppError> {
         )
         .map_err(|e| AppError::Render(e.to_string()))?;
 
-    let app = Rc::new(RefCell::new(App::demo(size.width, size.height)?));
-    app.borrow_mut().request_layout();
-
-    let app_ref = app.clone();
+    let mut app = App::demo(size.width, size.height)?;
+    app.request_layout();
     window.request_redraw();
 
     event_loop
@@ -147,16 +156,18 @@ pub fn run() -> Result<(), AppError> {
                     WindowEvent::CloseRequested => target.exit(),
 
                     WindowEvent::Resized(new_size) => {
-                        let _ = surface.resize(
+                        if let Err(e) = surface.resize(
                             NonZeroU32::new(new_size.width.max(1)).unwrap(),
                             NonZeroU32::new(new_size.height.max(1)).unwrap(),
-                        );
-                        app_ref.borrow_mut().resize(new_size.width, new_size.height);
+                        ) {
+                            eprintln!("surface resize failed: {e}");
+                        }
+                        app.resize(new_size.width, new_size.height);
                         window.request_redraw();
                     }
 
                     WindowEvent::CursorMoved { position, .. } => {
-                        app_ref.borrow_mut().handle_ui_event(UiEvent::MouseMove {
+                        app.handle_ui_event(UiEvent::MouseMove {
                             x: position.x as f32,
                             y: position.y as f32,
                         });
@@ -168,31 +179,35 @@ pub fn run() -> Result<(), AppError> {
                         button: MouseButton::Left,
                         ..
                     } => {
-                        // Read cursor position into a local first, then drop
-                        // the immutable borrow before taking a mutable one.
-                        let pos = { app_ref.borrow().cursor() };
+                        let (cx, cy) = app.event_state.cursor;
                         let ui_event = if state == ElementState::Pressed {
-                            UiEvent::MouseDown { x: pos.0, y: pos.1 }
+                            UiEvent::MouseDown { x: cx, y: cy }
                         } else {
-                            UiEvent::MouseUp { x: pos.0, y: pos.1 }
+                            UiEvent::MouseUp { x: cx, y: cy }
                         };
-                        app_ref.borrow_mut().handle_ui_event(ui_event);
+                        app.handle_ui_event(ui_event);
                         window.request_redraw();
                     }
 
                     WindowEvent::RedrawRequested => {
-                        let mut a = app_ref.borrow_mut();
-                        if a.redraw() {
-                            if let Ok(mut buffer) = surface.buffer_mut() {
-                                buffer.copy_from_slice(a.pixels());
-                                let _ = buffer.present();
+                        if app.redraw() {
+                            match surface.buffer_mut() {
+                                Ok(mut buffer) => {
+                                    let src = app.pixels();
+                                    if buffer.len() == src.len() {
+                                        buffer.copy_from_slice(src);
+                                    }
+                                    let _ = buffer.present();
+                                }
+                                Err(e) => {
+                                    eprintln!("buffer_mut failed: {e}");
+                                }
                             }
                         }
                     }
 
                     _ => {}
                 },
-                Event::AboutToWait => {}
                 _ => {}
             }
         })

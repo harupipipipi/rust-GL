@@ -1,7 +1,9 @@
 [package]
 name = "rust2d_ui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "A pure-Rust 2D UI experiment – software rasteriser built on softbuffer"
+license = "MIT"
 
 [dependencies]
 winit = "0.29"

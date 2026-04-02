@@ -4,3 +4,4 @@
 **/*.rs.bk
 .DS_Store
 Cargo.lock
+deploy.sh

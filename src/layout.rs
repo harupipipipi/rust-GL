@@ -1,11 +1,16 @@
-use crate::canvas::Rect;
+//! Layout primitives: constraints, sizes, insets, and the layout tree.
 
+use crate::canvas::Rect;
+use crate::widgets::WidgetId;
+
+/// A two-dimensional size.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Size {
     pub width: f32,
     pub height: f32,
 }
 
+/// Padding / margin expressed as four independent sides.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct EdgeInsets {
     pub top: f32,
@@ -16,25 +21,17 @@ pub struct EdgeInsets {
 
 impl EdgeInsets {
     pub fn all(v: f32) -> Self {
-        Self {
-            top: v,
-            right: v,
-            bottom: v,
-            left: v,
-        }
+        Self { top: v, right: v, bottom: v, left: v }
     }
 
     #[inline]
-    pub fn horizontal(&self) -> f32 {
-        self.left + self.right
-    }
+    pub fn horizontal(&self) -> f32 { self.left + self.right }
 
     #[inline]
-    pub fn vertical(&self) -> f32 {
-        self.top + self.bottom
-    }
+    pub fn vertical(&self) -> f32 { self.top + self.bottom }
 }
 
+/// Constraints passed down the widget tree during layout.
 #[derive(Debug, Clone, Copy)]
 pub struct BoxConstraints {
     pub min_width: f32,
@@ -44,24 +41,17 @@ pub struct BoxConstraints {
 }
 
 impl BoxConstraints {
+    /// Both min and max are the same.
     pub fn tight(width: f32, height: f32) -> Self {
-        Self {
-            min_width: width,
-            max_width: width,
-            min_height: height,
-            max_height: height,
-        }
+        Self { min_width: width, max_width: width, min_height: height, max_height: height }
     }
 
+    /// Min is zero, max is the given size.
     pub fn loose(width: f32, height: f32) -> Self {
-        Self {
-            min_width: 0.0,
-            max_width: width,
-            min_height: 0.0,
-            max_height: height,
-        }
+        Self { min_width: 0.0, max_width: width, min_height: 0.0, max_height: height }
     }
 
+    /// Clamp `size` into these constraints.
     pub fn constrain(&self, mut size: Size) -> Size {
         size.width = size.width.clamp(self.min_width, self.max_width);
         size.height = size.height.clamp(self.min_height, self.max_height);
@@ -69,12 +59,14 @@ impl BoxConstraints {
     }
 }
 
+/// Flow direction for container children.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayoutDirection {
     Vertical,
     Horizontal,
 }
 
+/// Style hints consumed during layout.
 #[derive(Debug, Clone)]
 pub struct LayoutStyle {
     pub padding: EdgeInsets,
@@ -96,27 +88,28 @@ impl Default for LayoutStyle {
     }
 }
 
-/// Helper: convert f32 to u32 with rounding, clamping negative to 0.
+/// Round `f32` to `u32`, clamping negatives to 0.
 #[inline]
 pub fn f32_to_u32(v: f32) -> u32 {
     v.round().max(0.0) as u32
 }
 
-/// Helper: convert f32 to i32 with rounding.
+/// Round `f32` to `i32`.
 #[inline]
 pub fn f32_to_i32(v: f32) -> i32 {
     v.round() as i32
 }
 
+/// A node in the computed layout tree.
 #[derive(Debug, Clone)]
 pub struct LayoutNode {
-    pub widget_id: u64,
+    pub widget_id: WidgetId,
     pub bounds: Rect,
     pub children: Vec<LayoutNode>,
 }
 
 impl LayoutNode {
-    pub fn new(widget_id: u64, x: i32, y: i32, width: u32, height: u32) -> Self {
+    pub fn new(widget_id: WidgetId, x: i32, y: i32, width: u32, height: u32) -> Self {
         Self {
             widget_id,
             bounds: Rect::new(x, y, width, height),
@@ -128,10 +121,11 @@ impl LayoutNode {
         self.children.push(child);
     }
 
-    pub fn find_by_id(&self, id: u64) -> Option<&LayoutNode> {
+    /// Depth-first search for a node with the given id.
+    pub fn find_by_id(&self, id: WidgetId) -> Option<&LayoutNode> {
         if self.widget_id == id {
             return Some(self);
         }
-        self.children.iter().find_map(|child| child.find_by_id(id))
+        self.children.iter().find_map(|c| c.find_by_id(id))
     }
 }
