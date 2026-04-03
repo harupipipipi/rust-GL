@@ -86,10 +86,6 @@ impl Widget for RadioButton {
         self.id
     }
 
-    fn debug_name(&self) -> &str {
-        "RadioButton"
-    }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,

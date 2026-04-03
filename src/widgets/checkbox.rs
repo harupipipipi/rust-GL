@@ -77,10 +77,6 @@ impl Widget for Checkbox {
         self.id
     }
 
-    fn debug_name(&self) -> &str {
-        "Checkbox"
-    }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,

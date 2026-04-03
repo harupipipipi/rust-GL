@@ -63,8 +63,6 @@ impl Text {
 impl Widget for Text {
     fn id(&self) -> WidgetId { self.id }
 
-    fn debug_name(&self) -> &str { "Text" }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,

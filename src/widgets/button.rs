@@ -74,8 +74,6 @@ impl Button {
 impl Widget for Button {
     fn id(&self) -> WidgetId { self.id }
 
-    fn debug_name(&self) -> &str { "Button" }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,

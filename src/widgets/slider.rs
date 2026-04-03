@@ -132,10 +132,6 @@ impl Widget for Slider {
         self.id
     }
 
-    fn debug_name(&self) -> &str {
-        "Slider"
-    }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,

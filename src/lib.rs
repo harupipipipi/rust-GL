@@ -18,7 +18,11 @@ pub use canvas::{Canvas, Color, Rect};
 pub use event::{EventState, UiEvent};
 pub use layout::{BoxConstraints, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle, Size};
 pub use text::FontManager;
-pub use widgets::{button::Button, container::Container, text::Text, Widget, WidgetId};
+pub use widgets::{
+    button::Button, checkbox::Checkbox, container::Container,
+    radio::RadioButton, slider::Slider, text::Text,
+    Widget, WidgetId,
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // Tests
@@ -347,26 +351,6 @@ mod tests {
         assert_eq!(es.cursor(), (0.0, 0.0));
         assert_eq!(es.hovered(), None);
         assert_eq!(es.pressed(), None);
-    }
-
-    // ── debug_name ──────────────────────────────────────────────────
-
-    #[test]
-    fn debug_name_button() {
-        let btn = Button::new_auto("x");
-        assert_eq!(btn.debug_name(), "Button");
-    }
-
-    #[test]
-    fn debug_name_container() {
-        let ctr = Container::new_auto();
-        assert_eq!(ctr.debug_name(), "Container");
-    }
-
-    #[test]
-    fn debug_name_text() {
-        let txt = Text::new_auto("x");
-        assert_eq!(txt.debug_name(), "Text");
     }
 
     // ── Widget layout / events ──────────────────────────────────────

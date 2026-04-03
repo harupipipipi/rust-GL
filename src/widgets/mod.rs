@@ -4,7 +4,10 @@
 //! small manual IDs.
 
 pub mod button;
+pub mod checkbox;
 pub mod container;
+pub mod radio;
+pub mod slider;
 pub mod text;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -43,15 +46,8 @@ impl WidgetId {
 
 /// The core trait implemented by every UI widget.
 pub trait Widget {
-    /// Returns the unique ID of this widget.
     fn id(&self) -> WidgetId;
 
-    /// Human-readable name for debugging purposes.
-    fn debug_name(&self) -> &str {
-        "Widget"
-    }
-
-    /// Compute layout given constraints and an origin position.
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -60,10 +56,8 @@ pub trait Widget {
         fonts: &FontManager,
     ) -> LayoutNode;
 
-    /// Draw this widget onto the canvas using the computed layout.
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager);
 
-    /// Handle a UI event, returning `true` if state changed.
     fn handle_event(
         &mut self,
         event: &UiEvent,

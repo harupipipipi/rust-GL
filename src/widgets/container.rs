@@ -53,8 +53,6 @@ impl Container {
 impl Widget for Container {
     fn id(&self) -> WidgetId { self.id }
 
-    fn debug_name(&self) -> &str { "Container" }
-
     fn layout(
         &mut self,
         constraints: BoxConstraints,
