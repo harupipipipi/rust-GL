@@ -8,7 +8,7 @@ use crate::{
     canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
     keyboard::{Key, KeyboardEvent, Modifiers},
-    layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -149,7 +149,10 @@ impl TextInput {
 
         match event {
             KeyboardEvent::KeyDown {
-                key, modifiers, text, ..
+                key,
+                modifiers,
+                text,
+                ..
             } => self.handle_key_down(key, modifiers, text.as_deref()),
             KeyboardEvent::ImeCommit(s) => {
                 self.delete_selection();
@@ -210,12 +213,7 @@ impl TextInput {
         }
     }
 
-    fn handle_key_down(
-        &mut self,
-        key: &Key,
-        modifiers: &Modifiers,
-        _text: Option<&str>,
-    ) -> bool {
+    fn handle_key_down(&mut self, key: &Key, modifiers: &Modifiers, _text: Option<&str>) -> bool {
         match key {
             Key::Backspace => {
                 if self.delete_selection() {
@@ -308,15 +306,13 @@ impl TextInput {
     /// Compute the pixel x-offset of the cursor (relative to text start).
     fn cursor_x_offset(&self, fonts: &FontManager) -> f32 {
         let text_before_cursor: String = self.text.chars().take(self.cursor).collect();
-        let (w, _) = fonts.measure_text(&text_before_cursor, self.font_size);
-        w
+        fonts.aligned_text_width(&text_before_cursor, self.font_size) as f32
     }
 
     /// Compute the pixel x-offset for a given character index.
     fn char_x_offset(&self, char_idx: usize, fonts: &FontManager) -> f32 {
         let text_before: String = self.text.chars().take(char_idx).collect();
-        let (w, _) = fonts.measure_text(&text_before, self.font_size);
-        w
+        fonts.aligned_text_width(&text_before, self.font_size) as f32
     }
 
     /// Ensure the cursor is visible by adjusting `scroll_offset`.
@@ -485,8 +481,7 @@ impl Widget for TextInput {
                     // Widget::handle_event does not receive FontManager, so we
                     // estimate the character index from the click position using
                     // an average character width heuristic.
-                    let text_area_x =
-                        rect.x as f32 + self.style.padding.left + 1.0;
+                    let text_area_x = rect.x as f32 + self.style.padding.left + 1.0;
                     let click_x_in_text = (x - text_area_x) + self.scroll_offset;
                     let avg_char_width = self.font_size * 0.6;
                     let estimated_idx = if avg_char_width > 0.0 {
@@ -893,10 +888,7 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(500), 10, 10, 200, 30);
         let mut es = EventState::default();
 
-        let ev = UiEvent::MouseDown {
-            x: 300.0,
-            y: 300.0,
-        };
+        let ev = UiEvent::MouseDown { x: 300.0, y: 300.0 };
         let changed = ti.handle_event(&ev, &mut es, &layout);
         assert!(changed);
         assert!(!ti.is_focused());

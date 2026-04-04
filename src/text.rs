@@ -6,10 +6,7 @@
 
 use crate::canvas::{Canvas, Color, Rect};
 use font_kit::{
-    family_name::FamilyName,
-    handle::Handle,
-    properties::Properties,
-    source::SystemSource,
+    family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
 use fontdue::{Font as FontdueFont, FontSettings};
 use thiserror::Error;
@@ -28,6 +25,12 @@ pub enum TextError {
 /// Manages a single font and exposes measurement / drawing helpers.
 pub struct FontManager {
     font: FontdueFont,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PositionedGlyph {
+    ch: char,
+    x: i32,
 }
 
 impl FontManager {
@@ -94,6 +97,31 @@ impl FontManager {
             .unwrap_or(px * 0.8)
     }
 
+    /// Convert floating-point advances into stable pixel-aligned glyph origins.
+    fn layout_glyphs(&self, text: &str, px: f32) -> Vec<PositionedGlyph> {
+        let mut glyphs = Vec::with_capacity(text.chars().count());
+        let mut pen_x: f32 = 0.0;
+
+        for ch in text.chars() {
+            glyphs.push(PositionedGlyph {
+                ch,
+                x: pen_x.round() as i32,
+            });
+            pen_x += self.font.metrics(ch, px).advance_width;
+        }
+
+        glyphs
+    }
+
+    /// Pixel-aligned width using the same accumulation rule as rasterised text.
+    pub(crate) fn aligned_text_width(&self, text: &str, px: f32) -> i32 {
+        let mut pen_x: f32 = 0.0;
+        for ch in text.chars() {
+            pen_x += self.font.metrics(ch, px).advance_width;
+        }
+        pen_x.round() as i32
+    }
+
     // ── Word wrap ────────────────────────────────────────────────
 
     /// Break `text` into lines that fit within `max_width` pixels.
@@ -130,8 +158,14 @@ impl FontManager {
             let cw = self.font.metrics(ch, px).advance_width;
 
             if is_cjk(ch) || ch == ' ' {
-                flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
-                           max_width, &mut result);
+                flush_word(
+                    &mut current,
+                    &mut cur_w,
+                    &mut word,
+                    &mut word_w,
+                    max_width,
+                    &mut result,
+                );
                 if cur_w + cw > max_width && !current.is_empty() {
                     result.push(std::mem::take(&mut current));
                     cur_w = 0.0;
@@ -144,8 +178,14 @@ impl FontManager {
             }
         }
 
-        flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
-                   max_width, &mut result);
+        flush_word(
+            &mut current,
+            &mut cur_w,
+            &mut word,
+            &mut word_w,
+            max_width,
+            &mut result,
+        );
         if !current.is_empty() {
             result.push(current);
         }
@@ -175,25 +215,25 @@ impl FontManager {
         let ascent = self.ascent(px).round() as i32;
 
         for (li, line) in lines.iter().enumerate() {
-            let mut cx = x;
             let baseline_y = y + li as i32 * lh + ascent;
 
-            for ch in line.chars() {
-                let (metrics, bitmap) = self.font.rasterize(ch, px);
+            for glyph in self.layout_glyphs(line, px) {
+                let (metrics, bitmap) = self.font.rasterize(glyph.ch, px);
                 let glyph_top = baseline_y - metrics.height as i32 - metrics.ymin;
 
                 for gy in 0..metrics.height {
                     for gx in 0..metrics.width {
                         let alpha = bitmap[gy * metrics.width + gx];
-                        if alpha == 0 { continue; }
+                        if alpha == 0 {
+                            continue;
+                        }
                         canvas.blend_pixel(
-                            cx + metrics.xmin + gx as i32,
+                            x + glyph.x + metrics.xmin + gx as i32,
                             glyph_top + gy as i32,
                             Color::rgba(color.r, color.g, color.b, alpha),
                         );
                     }
                 }
-                cx += metrics.advance_width.round() as i32;
             }
         }
     }
@@ -236,7 +276,9 @@ fn flush_word(
     max_width: f32,
     result: &mut Vec<String>,
 ) {
-    if word.is_empty() { return; }
+    if word.is_empty() {
+        return;
+    }
 
     if *cur_w + *word_w > max_width && !current.is_empty() {
         result.push(std::mem::take(current));
@@ -258,4 +300,49 @@ fn is_cjk(ch: char) -> bool {
       | '\u{FF00}'..='\u{FFEF}'
       | '\u{20000}'..='\u{2A6DF}'
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FontManager;
+
+    #[test]
+    fn glyph_layout_matches_measured_width_when_rounded() {
+        let fm = match FontManager::new() {
+            Ok(fm) => fm,
+            Err(e) => {
+                eprintln!("skipping test: {e}");
+                return;
+            }
+        };
+
+        let samples = [
+            "Hello, world!",
+            "iiiiiiiiii",
+            "純Rust 2D UIライブラリ",
+            "WAVE wave",
+        ];
+
+        for sample in samples {
+            let glyphs = fm.layout_glyphs(sample, 18.0);
+            let (width, _) = fm.measure_text(sample, 18.0);
+            let actual_end = fm.aligned_text_width(sample, 18.0);
+
+            assert_eq!(
+                actual_end,
+                width.round() as i32,
+                "glyph placement drifted for sample: {sample}"
+            );
+
+            let mut prefix = String::new();
+            for glyph in glyphs {
+                assert_eq!(
+                    glyph.x,
+                    fm.aligned_text_width(&prefix, 18.0),
+                    "glyph origin should match the aligned width of its prefix for sample: {sample}"
+                );
+                prefix.push(glyph.ch);
+            }
+        }
+    }
 }
