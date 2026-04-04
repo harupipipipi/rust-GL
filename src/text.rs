@@ -347,8 +347,8 @@ impl FontManager {
         match self.safety_mode {
             TextSafetyMode::Raw => Cow::Borrowed(text),
             TextSafetyMode::Safe => {
-                let normalized: String = text.nfc().map(safe_display_char).collect();
-                Cow::Owned(normalized)
+                let normalized: String = text.nfc().collect();
+                Cow::Owned(sanitize_safe_text(&normalized))
             }
         }
     }
@@ -412,9 +412,27 @@ fn find_replacement(fonts: &[LoadedFont]) -> Option<FallbackGlyph> {
     None
 }
 
+fn sanitize_safe_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\r' {
+            if chars.peek() == Some(&'\n') {
+                chars.next();
+            }
+            out.push('\n');
+            continue;
+        }
+
+        out.push(safe_display_char(ch));
+    }
+
+    out
+}
+
 fn safe_display_char(ch: char) -> char {
     match ch {
-        '\r' => '\n',
         '\t' => ' ',
         c if c.is_control() && c != '\n' => '\u{FFFD}',
         c if is_unsafe_format_char(c) => '\u{FFFD}',
