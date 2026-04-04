@@ -24,7 +24,7 @@ pub use layout::{
     BoxConstraints, CrossAxisAlignment, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle,
     OverflowBehavior, Size,
 };
-pub use text::FontManager;
+pub use text::{FontManager, TextSafetyMode};
 pub use widgets::{
     button::Button, checkbox::Checkbox, container::Container, divider::Divider,
     radio::RadioButton, scroll::ScrollView, slider::Slider, spacer::Spacer, text::Text,

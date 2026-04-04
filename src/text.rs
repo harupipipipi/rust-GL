@@ -9,11 +9,13 @@ use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
 use fontdue::{Font as FontdueFont, FontSettings};
+use std::borrow::Cow;
 use std::{
     collections::HashSet,
     hash::{Hash, Hasher},
 };
 use thiserror::Error;
+use unicode_normalization::UnicodeNormalization;
 
 /// Errors that can occur while loading fonts.
 #[derive(Debug, Error)]
@@ -30,6 +32,16 @@ pub enum TextError {
 pub struct FontManager {
     fonts: Vec<LoadedFont>,
     replacement: FallbackGlyph,
+    safety_mode: TextSafetyMode,
+}
+
+/// Default-safe text handling mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextSafetyMode {
+    /// Normalize and sanitize text before display to avoid accidental mojibake.
+    Safe,
+    /// Preserve raw Unicode controls and formatting marks for advanced use.
+    Raw,
 }
 
 #[derive(Debug)]
@@ -53,6 +65,11 @@ struct PositionedGlyph {
 impl FontManager {
     /// Load a set of system fonts and build per-glyph fallback.
     pub fn new() -> Result<Self, TextError> {
+        Self::with_safety_mode(TextSafetyMode::Safe)
+    }
+
+    /// Load fonts with an explicit text safety mode.
+    pub fn with_safety_mode(safety_mode: TextSafetyMode) -> Result<Self, TextError> {
         let source = SystemSource::new();
         let props = Properties::new();
         let mut fonts = Vec::new();
@@ -83,16 +100,21 @@ impl FontManager {
             TextError::SystemFont("loaded fonts, but none provided a replacement glyph".into())
         })?;
 
-        Ok(Self { fonts, replacement })
+        Ok(Self {
+            fonts,
+            replacement,
+            safety_mode,
+        })
     }
 
     // ── Metrics ──────────────────────────────────────────────────
 
     /// Measure the width and height of a single-line string.
     pub fn measure_text(&self, text: &str, px: f32) -> (f32, f32) {
+        let normalized = self.normalize_text(text);
         let mut width: f32 = 0.0;
         let mut max_h: f32 = 0.0;
-        for ch in text.chars() {
+        for ch in normalized.chars() {
             let glyph = self.resolve_glyph(ch);
             let m = self.font(glyph.font_index).metrics(glyph.ch, px);
             width += m.advance_width;
@@ -122,12 +144,18 @@ impl FontManager {
         self.find_font_index_for_char(ch).is_some()
     }
 
+    /// Returns the active default text safety mode.
+    pub fn safety_mode(&self) -> TextSafetyMode {
+        self.safety_mode
+    }
+
     /// Convert floating-point advances into stable pixel-aligned glyph origins.
     fn layout_glyphs(&self, text: &str, px: f32) -> Vec<PositionedGlyph> {
-        let mut glyphs = Vec::with_capacity(text.chars().count());
+        let normalized = self.normalize_text(text);
+        let mut glyphs = Vec::with_capacity(normalized.chars().count());
         let mut pen_x: f32 = 0.0;
 
-        for ch in text.chars() {
+        for ch in normalized.chars() {
             let glyph = self.resolve_glyph(ch);
             glyphs.push(PositionedGlyph {
                 ch: glyph.ch,
@@ -145,8 +173,9 @@ impl FontManager {
 
     /// Pixel-aligned width using the same accumulation rule as rasterised text.
     pub(crate) fn aligned_text_width(&self, text: &str, px: f32) -> i32 {
+        let normalized = self.normalize_text(text);
         let mut pen_x: f32 = 0.0;
-        for ch in text.chars() {
+        for ch in normalized.chars() {
             let glyph = self.resolve_glyph(ch);
             pen_x += self
                 .font(glyph.font_index)
@@ -162,12 +191,13 @@ impl FontManager {
     ///
     /// English text breaks at spaces; CJK allows a break before every char.
     pub fn wrap_text(&self, text: &str, max_width: f32, px: f32) -> Vec<String> {
+        let normalized = self.normalize_text(text);
         if max_width <= 0.0 {
-            return vec![text.to_string()];
+            return vec![normalized.into_owned()];
         }
 
         let mut lines: Vec<String> = Vec::new();
-        for hard_line in text.split('\n') {
+        for hard_line in normalized.split('\n') {
             let wrapped = self.wrap_hard_line(hard_line, max_width, px);
             if wrapped.is_empty() {
                 lines.push(String::new());
@@ -244,9 +274,10 @@ impl FontManager {
         px: f32,
         color: Color,
     ) {
+        let normalized = self.normalize_text(text);
         let lines = match max_width {
-            Some(w) => self.wrap_text(text, w as f32, px),
-            None => vec![text.to_string()],
+            Some(w) => self.wrap_text(&normalized, w as f32, px),
+            None => vec![normalized.into_owned()],
         };
 
         let lh = self.line_height(px).round() as i32;
@@ -311,6 +342,16 @@ impl FontManager {
             .map(|font_index| FallbackGlyph { font_index, ch })
             .unwrap_or(self.replacement)
     }
+
+    fn normalize_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        match self.safety_mode {
+            TextSafetyMode::Raw => Cow::Borrowed(text),
+            TextSafetyMode::Safe => {
+                let normalized: String = text.nfc().map(safe_display_char).collect();
+                Cow::Owned(normalized)
+            }
+        }
+    }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -371,6 +412,51 @@ fn find_replacement(fonts: &[LoadedFont]) -> Option<FallbackGlyph> {
     None
 }
 
+fn safe_display_char(ch: char) -> char {
+    match ch {
+        '\r' => '\n',
+        '\t' => ' ',
+        c if c.is_control() && c != '\n' => '\u{FFFD}',
+        c if is_unsafe_format_char(c) => '\u{FFFD}',
+        c if is_private_use(c) || is_noncharacter(c) => '\u{FFFD}',
+        c if is_unusual_space(c) => ' ',
+        c => c,
+    }
+}
+
+fn is_unusual_space(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{00A0}' | '\u{1680}' | '\u{2000}'..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}'
+    )
+}
+
+fn is_unsafe_format_char(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{061C}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{206F}'
+            | '\u{FE00}'..='\u{FE0F}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{E0001}'
+            | '\u{E0020}'..='\u{E007F}'
+    )
+}
+
+fn is_private_use(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{E000}'..='\u{F8FF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}'
+    )
+}
+
+fn is_noncharacter(ch: char) -> bool {
+    let cp = ch as u32;
+    (0xFDD0..=0xFDEF).contains(&cp) || (cp & 0xFFFE == 0xFFFE && cp <= 0x10FFFF)
+}
+
 fn flush_word(
     current: &mut String,
     cur_w: &mut f32,
@@ -407,7 +493,7 @@ fn is_cjk(ch: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::FontManager;
+    use super::{FontManager, TextSafetyMode};
 
     #[test]
     fn glyph_layout_matches_measured_width_when_rounded() {
@@ -484,5 +570,40 @@ mod tests {
         for ch in ['A', 'z', '0', '?'] {
             assert!(fm.has_display_glyph(ch), "expected a loaded font for {ch}");
         }
+    }
+
+    #[test]
+    fn safe_mode_normalizes_problematic_unicode_by_default() {
+        let fm = match FontManager::new() {
+            Ok(fm) => fm,
+            Err(e) => {
+                eprintln!("skipping test: {e}");
+                return;
+            }
+        };
+
+        assert_eq!(fm.safety_mode(), TextSafetyMode::Safe);
+
+        let raw = "e\u{0301}\u{200D}\u{0007}\u{00A0}x";
+        let safe_width = fm.measure_text(raw, 18.0);
+        let normalized_width = fm.measure_text("é\u{FFFD}\u{FFFD} x", 18.0);
+        assert_eq!(safe_width, normalized_width);
+    }
+
+    #[test]
+    fn raw_mode_preserves_advanced_formatting_codepoints() {
+        let fm = match FontManager::with_safety_mode(TextSafetyMode::Raw) {
+            Ok(fm) => fm,
+            Err(e) => {
+                eprintln!("skipping test: {e}");
+                return;
+            }
+        };
+
+        assert_eq!(fm.safety_mode(), TextSafetyMode::Raw);
+
+        let raw = "a\u{200D}b";
+        let lines = fm.wrap_text(raw, 1000.0, 18.0);
+        assert_eq!(lines, vec![raw.to_string()]);
     }
 }
