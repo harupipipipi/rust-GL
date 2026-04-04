@@ -3,7 +3,7 @@
 use crate::{
     canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -74,7 +74,13 @@ impl Button {
 }
 
 impl Widget for Button {
-    fn id(&self) -> WidgetId { self.id }
+    fn id(&self) -> WidgetId {
+        self.id
+    }
+
+    fn outer_margin(&self) -> EdgeInsets {
+        self.style.margin
+    }
 
     fn layout(
         &mut self,
@@ -84,7 +90,13 @@ impl Widget for Button {
         fonts: &FontManager,
     ) -> LayoutNode {
         let size = self.desired_size(constraints, fonts);
-        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(size.width),
+            f32_to_u32(size.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -100,8 +112,10 @@ impl Widget for Button {
         canvas.draw_rounded_rect(rect, 8, bg);
         if rect.width > 0 {
             canvas.draw_line(
-                rect.x, rect.y,
-                rect.x + rect.width as i32 - 1, rect.y,
+                rect.x,
+                rect.y,
+                rect.x + rect.width as i32 - 1,
+                rect.y,
                 Color::GRAY_600,
             );
         }
@@ -153,7 +167,9 @@ impl Widget for Button {
                         cb();
                     }
                 }
-                if was { changed = true; }
+                if was {
+                    changed = true;
+                }
             }
         }
 

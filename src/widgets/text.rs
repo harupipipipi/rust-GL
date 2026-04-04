@@ -3,7 +3,7 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -61,7 +61,13 @@ impl Text {
 }
 
 impl Widget for Text {
-    fn id(&self) -> WidgetId { self.id }
+    fn id(&self) -> WidgetId {
+        self.id
+    }
+
+    fn outer_margin(&self) -> crate::layout::EdgeInsets {
+        self.style.margin
+    }
 
     fn layout(
         &mut self,
@@ -71,7 +77,13 @@ impl Widget for Text {
         fonts: &FontManager,
     ) -> LayoutNode {
         let desired = constraints.constrain(self.desired_size(constraints, fonts));
-        LayoutNode::new(self.id, x, y, f32_to_u32(desired.width), f32_to_u32(desired.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(desired.width),
+            f32_to_u32(desired.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -83,7 +95,13 @@ impl Widget for Text {
         fonts.draw_text_in_rect(
             canvas,
             &self.content,
-            crate::canvas::Rect::new(tx, ty, max_w, rect.height.saturating_sub(f32_to_u32(self.style.padding.top))),
+            crate::canvas::Rect::new(
+                tx,
+                ty,
+                max_w,
+                rect.height
+                    .saturating_sub(f32_to_u32(self.style.padding.top)),
+            ),
             self.font_size,
             self.color,
         );

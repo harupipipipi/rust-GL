@@ -3,7 +3,7 @@
 use crate::{
     canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -142,6 +142,10 @@ impl Widget for Slider {
         self.id
     }
 
+    fn outer_margin(&self) -> crate::layout::EdgeInsets {
+        self.style.margin
+    }
+
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -153,7 +157,13 @@ impl Widget for Slider {
             width: constraints.max_width,
             height: SLIDER_HEIGHT,
         });
-        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(size.width),
+            f32_to_u32(size.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, _fonts: &FontManager) {
@@ -339,36 +349,18 @@ mod tests {
         let mut es = EventState::default();
 
         // Click at centre of widget -> should set value near 50.
-        s.handle_event(
-            &UiEvent::MouseDown { x: 58.0, y: 12.0 },
-            &mut es,
-            &layout,
-        );
+        s.handle_event(&UiEvent::MouseDown { x: 58.0, y: 12.0 }, &mut es, &layout);
         assert!(s.is_dragging);
         let v = s.get_value();
         assert!(v > 40.0 && v < 60.0, "value = {v}");
 
         // Drag right.
-        s.handle_event(
-            &UiEvent::MouseMove {
-                x: 108.0,
-                y: 12.0,
-            },
-            &mut es,
-            &layout,
-        );
+        s.handle_event(&UiEvent::MouseMove { x: 108.0, y: 12.0 }, &mut es, &layout);
         let v2 = s.get_value();
         assert!(v2 > v, "v2={v2} should be > v={v}");
 
         // Release.
-        s.handle_event(
-            &UiEvent::MouseUp {
-                x: 108.0,
-                y: 12.0,
-            },
-            &mut es,
-            &layout,
-        );
+        s.handle_event(&UiEvent::MouseUp { x: 108.0, y: 12.0 }, &mut es, &layout);
         assert!(!s.is_dragging);
 
         assert!(call_count.load(Ordering::SeqCst) >= 2);
@@ -380,14 +372,7 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(708), 0, 0, 116, 24);
         let mut es = EventState::default();
 
-        s.handle_event(
-            &UiEvent::MouseDown {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        s.handle_event(&UiEvent::MouseDown { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(!s.is_dragging);
     }
 
@@ -397,21 +382,10 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(709), 0, 0, 116, 24);
         let mut es = EventState::default();
 
-        let changed = s.handle_event(
-            &UiEvent::MouseMove { x: 50.0, y: 12.0 },
-            &mut es,
-            &layout,
-        );
+        let changed = s.handle_event(&UiEvent::MouseMove { x: 50.0, y: 12.0 }, &mut es, &layout);
         assert!(changed);
 
-        let changed = s.handle_event(
-            &UiEvent::MouseMove {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        let changed = s.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(changed);
     }
 }

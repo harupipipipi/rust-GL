@@ -86,6 +86,66 @@ fn horizontal_container_children_x_increases() {
     assert!(x2 > x1, "child2.x ({}) must be > child1.x ({})", x2, x1);
 }
 
+#[test]
+fn vertical_container_respects_child_margins() {
+    let fm = require_font_manager!();
+
+    let mut title = Text::new(WidgetId::manual(80), "Title");
+    title.style.margin.bottom = 14.0;
+
+    let mut body = Text::new(WidgetId::manual(81), "Body");
+    body.style.margin.top = 6.0;
+
+    let mut root = Container::new(WidgetId::manual(8));
+    root.style.direction = LayoutDirection::Vertical;
+    root.style.gap = 0.0;
+    root.push(title);
+    root.push(body);
+
+    let layout = root.layout(BoxConstraints::loose(400.0, 800.0), 0, 0, &fm);
+    let title_node = &layout.children[0];
+    let body_node = &layout.children[1];
+
+    let gap_actual = body_node.bounds.y - (title_node.bounds.y + title_node.bounds.height as i32);
+    assert_eq!(gap_actual, 20);
+}
+
+#[test]
+fn overlay_layout_requires_opt_in_to_overlap() {
+    let fm = require_font_manager!();
+
+    let mut overlay = Container::new(WidgetId::manual(90));
+    overlay.style.direction = LayoutDirection::Overlay;
+    overlay.push(Text::new(WidgetId::manual(900), "Title"));
+    overlay.push(Text::new(WidgetId::manual(901), "Badge"));
+
+    let layout = overlay.layout(BoxConstraints::loose(400.0, 400.0), 0, 0, &fm);
+    assert_eq!(layout.children.len(), 2);
+    assert_eq!(layout.children[0].bounds.y, layout.children[1].bounds.y);
+}
+
+#[test]
+fn overlay_children_can_be_offset_with_margin() {
+    let fm = require_font_manager!();
+
+    let base = Text::new(WidgetId::manual(910), "Base");
+    let mut badge = Text::new(WidgetId::manual(911), "Badge");
+    badge.style.margin.left = 24.0;
+    badge.style.margin.top = 8.0;
+
+    let mut overlay = Container::new(WidgetId::manual(91));
+    overlay.style.direction = LayoutDirection::Overlay;
+    overlay.push(base);
+    overlay.push(badge);
+
+    let layout = overlay.layout(BoxConstraints::loose(400.0, 400.0), 0, 0, &fm);
+    assert_eq!(
+        layout.children[1].bounds.x,
+        layout.children[0].bounds.x + 24
+    );
+    assert_eq!(layout.children[1].bounds.y, layout.children[0].bounds.y + 8);
+}
+
 // ─────────────────────────────────────────────────────────────
 // Nested containers
 // ─────────────────────────────────────────────────────────────

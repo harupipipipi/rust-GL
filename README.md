@@ -38,7 +38,9 @@ fn main() {
 
     // 2. Assemble a widget tree.
     let mut root = Container::new_auto();
-    root.push(Text::new_auto("Hello, rust2d_ui!"));
+    let mut title = Text::new_auto("Hello, rust2d_ui!");
+    title.style.margin.bottom = 8.0;
+    root.push(title);
     root.push(
         Button::new_auto("Click me").on_click(|| {
             println!("button clicked!");
@@ -60,12 +62,15 @@ Run it with:
 cargo run --example hello
 ```
 
+By default, containers behave like normal document flow: children stack vertically and do not overlap. Use `style.margin` for outside spacing, and switch a container to `LayoutDirection::Overlay` only when you intentionally want layered placement.
+
 ## Examples
 
 | Example | Description |
 |---------|-------------|
 | `demo`  | Minimal — calls `rust2d_ui::run()` |
 | `hello` | Widget-tree construction pattern |
+| `othello_jp` | 完全日本語 UI のローカル対戦オセロ |
 
 ## Architecture
 

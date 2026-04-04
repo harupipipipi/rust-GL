@@ -44,9 +44,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new(size.width, size.height)?;
 
     // Title
-    app.root.push(Text::new_auto(
-        "Layout Demo — Vertical > Horizontal nesting",
-    ));
+    let mut title = Text::new_auto("Layout Demo — Vertical > Horizontal nesting");
+    title.style.margin.bottom = 8.0;
+    app.root.push(title);
 
     // ── Row 1: Horizontal, gap=20, padding=12 ──────────────────
     let mut row1 = Container::new_auto();
@@ -92,11 +92,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     row3.push(inner_vert);
     row3.push(Button::new_auto("Beside"));
 
+    // ── Overlay: explicit opt-in overlap ───────────────────────
+    let mut overlay = Container::new_auto();
+    overlay.style.direction = LayoutDirection::Overlay;
+    overlay.style.padding = EdgeInsets::all(12.0);
+    overlay.background = Some(Color::rgba(245, 240, 220, 255));
+
+    let mut card = Text::new_auto("Overlay is opt-in");
+    card.style.padding = EdgeInsets::all(12.0);
+    card.style.margin.bottom = 24.0;
+
+    let mut badge = Button::new_auto("Badge");
+    badge.style.margin.left = 150.0;
+    badge.style.margin.top = 8.0;
+
+    overlay.push(card);
+    overlay.push(badge);
+
     // Add rows to the outer vertical container
     app.root.style.gap = 12.0;
     app.root.push(row1);
     app.root.push(row2);
     app.root.push(row3);
+    app.root.push(overlay);
 
     app.request_layout();
     window.request_redraw();

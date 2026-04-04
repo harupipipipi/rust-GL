@@ -27,8 +27,14 @@ fn safe_mode_normalizes_common_mojibake_triggers() {
     let accidental = "Cafe\u{0301}\u{200D}\u{0007}\u{00A0}X";
     let safe = "Café\u{FFFD}\u{FFFD} X";
 
-    assert_eq!(fm.measure_text(accidental, 18.0), fm.measure_text(safe, 18.0));
-    assert_eq!(fm.wrap_text(accidental, 1000.0, 18.0), vec![safe.to_string()]);
+    assert_eq!(
+        fm.measure_text(accidental, 18.0),
+        fm.measure_text(safe, 18.0)
+    );
+    assert_eq!(
+        fm.wrap_text(accidental, 1000.0, 18.0),
+        vec![safe.to_string()]
+    );
 }
 
 #[test]
@@ -38,7 +44,15 @@ fn safe_mode_keeps_line_breaks_but_sanitizes_dangerous_chars() {
     let accidental = "1\r\n2\u{202E}3\n\n4";
     let lines = fm.wrap_text(accidental, 1000.0, 18.0);
 
-    assert_eq!(lines, vec!["1".to_string(), "2\u{FFFD}3".to_string(), "".to_string(), "4".to_string()]);
+    assert_eq!(
+        lines,
+        vec![
+            "1".to_string(),
+            "2\u{FFFD}3".to_string(),
+            "".to_string(),
+            "4".to_string()
+        ]
+    );
 }
 
 #[test]

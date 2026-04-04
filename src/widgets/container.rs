@@ -5,9 +5,8 @@ use crate::{
     event::{EventState, UiEvent},
     keyboard::KeyboardEvent,
     layout::{
-        BoxConstraints, CrossAxisAlignment, LayoutDirection, LayoutNode, LayoutStyle,
-        OverflowBehavior,
-        f32_to_i32, f32_to_u32,
+        f32_to_i32, f32_to_u32, BoxConstraints, CrossAxisAlignment, EdgeInsets, LayoutDirection,
+        LayoutNode, LayoutStyle, OverflowBehavior,
     },
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
@@ -53,7 +52,13 @@ impl Container {
 }
 
 impl Widget for Container {
-    fn id(&self) -> WidgetId { self.id }
+    fn id(&self) -> WidgetId {
+        self.id
+    }
+
+    fn outer_margin(&self) -> EdgeInsets {
+        self.style.margin
+    }
 
     fn layout(
         &mut self,
@@ -65,10 +70,10 @@ impl Widget for Container {
         let width = constraints.max_width.max(constraints.min_width);
         let inner_width = (width - self.style.padding.horizontal()).max(0.0);
         let inner_height_limit = (constraints.max_height - self.style.padding.vertical()).max(0.0);
-        let gap = if self.children.is_empty() {
-            0.0
-        } else {
-            self.style.gap * (self.children.len().saturating_sub(1) as f32)
+        let gap = match self.style.direction {
+            LayoutDirection::Overlay => 0.0,
+            _ if self.children.is_empty() => 0.0,
+            _ => self.style.gap * (self.children.len().saturating_sub(1) as f32),
         };
 
         let mut child_nodes: Vec<Option<LayoutNode>> = Vec::with_capacity(self.children.len());
@@ -77,8 +82,9 @@ impl Widget for Container {
         let mut max_cross: f32 = 0.0;
 
         for child in &mut self.children {
+            let margin = child.outer_margin();
             let flex = child.flex_factor().max(0.0);
-            if flex > 0.0 {
+            if flex > 0.0 && self.style.direction != LayoutDirection::Overlay {
                 total_flex += flex;
                 child_nodes.push(None);
                 continue;
@@ -87,19 +93,30 @@ impl Widget for Container {
             let cc = child_constraints(
                 self.style.direction,
                 self.style.align_items,
-                inner_width,
-                inner_height_limit,
+                available_cross(
+                    self.style.direction,
+                    inner_width,
+                    inner_height_limit,
+                    margin,
+                ),
+                available_main(
+                    self.style.direction,
+                    inner_width,
+                    inner_height_limit,
+                    margin,
+                ),
                 None,
             );
             let cn = child.layout(cc, 0, 0, fonts);
-            used_main += main_extent(self.style.direction, &cn);
-            max_cross = max_cross.max(cross_extent(self.style.direction, &cn));
+            used_main += occupied_main(self.style.direction, &cn, margin);
+            max_cross = max_cross.max(occupied_cross(self.style.direction, &cn, margin));
             child_nodes.push(Some(cn));
         }
 
         let main_capacity = match self.style.direction {
             LayoutDirection::Vertical => inner_height_limit,
             LayoutDirection::Horizontal => inner_width,
+            LayoutDirection::Overlay => 0.0,
         };
         let remaining_main = (main_capacity - used_main - gap).max(0.0);
 
@@ -108,26 +125,41 @@ impl Widget for Container {
                 if child_nodes[idx].is_some() {
                     continue;
                 }
+                let margin = child.outer_margin();
 
                 let share = remaining_main * (child.flex_factor().max(0.0) / total_flex);
                 let cc = child_constraints(
                     self.style.direction,
                     self.style.align_items,
-                    inner_width,
-                    inner_height_limit,
-                    Some(share),
+                    available_cross(
+                        self.style.direction,
+                        inner_width,
+                        inner_height_limit,
+                        margin,
+                    ),
+                    available_main(
+                        self.style.direction,
+                        inner_width,
+                        inner_height_limit,
+                        margin,
+                    ),
+                    Some((share - main_margin(self.style.direction, margin)).max(0.0)),
                 );
                 let cn = child.layout(cc, 0, 0, fonts);
-                used_main += main_extent(self.style.direction, &cn);
-                max_cross = max_cross.max(cross_extent(self.style.direction, &cn));
+                used_main += occupied_main(self.style.direction, &cn, margin);
+                max_cross = max_cross.max(occupied_cross(self.style.direction, &cn, margin));
                 child_nodes[idx] = Some(cn);
             }
         }
 
-        let children_main = used_main + gap;
+        let children_main = match self.style.direction {
+            LayoutDirection::Overlay => max_cross,
+            _ => used_main + gap,
+        };
         let unclamped_height = match self.style.direction {
             LayoutDirection::Vertical => children_main + self.style.padding.vertical(),
             LayoutDirection::Horizontal => max_cross + self.style.padding.vertical(),
+            LayoutDirection::Overlay => children_main + self.style.padding.vertical(),
         };
         let height = unclamped_height.clamp(constraints.min_height, constraints.max_height);
 
@@ -135,42 +167,43 @@ impl Widget for Container {
         let inner_height = (height - self.style.padding.vertical()).max(0.0);
         let mut cursor_main = 0.0;
 
-        for mut child_node in child_nodes.into_iter().flatten() {
+        for (child, maybe_child_node) in self.children.iter().zip(child_nodes.into_iter()) {
+            let Some(mut child_node) = maybe_child_node else {
+                continue;
+            };
+            let margin = child.outer_margin();
             let child_main = main_extent(self.style.direction, &child_node);
-            let child_cross = cross_extent(self.style.direction, &child_node);
+            let occupied_cross = occupied_cross(self.style.direction, &child_node, margin);
             let (child_x, child_y) = match self.style.direction {
                 LayoutDirection::Vertical => {
-                    let cross_x = aligned_cross_offset(
-                        self.style.align_items,
-                        inner_width,
-                        child_cross,
-                    );
+                    let cross_x =
+                        aligned_cross_offset(self.style.align_items, inner_width, occupied_cross);
                     (
-                        x + f32_to_i32(self.style.padding.left + cross_x),
-                        y + f32_to_i32(self.style.padding.top + cursor_main),
+                        x + f32_to_i32(self.style.padding.left + cross_x + margin.left),
+                        y + f32_to_i32(self.style.padding.top + cursor_main + margin.top),
                     )
                 }
                 LayoutDirection::Horizontal => {
-                    let cross_y = aligned_cross_offset(
-                        self.style.align_items,
-                        inner_height,
-                        child_cross,
-                    );
+                    let cross_y =
+                        aligned_cross_offset(self.style.align_items, inner_height, occupied_cross);
                     (
-                        x + f32_to_i32(self.style.padding.left + cursor_main),
-                        y + f32_to_i32(self.style.padding.top + cross_y),
+                        x + f32_to_i32(self.style.padding.left + cursor_main + margin.left),
+                        y + f32_to_i32(self.style.padding.top + cross_y + margin.top),
                     )
                 }
+                LayoutDirection::Overlay => (
+                    x + f32_to_i32(self.style.padding.left + margin.left),
+                    y + f32_to_i32(self.style.padding.top + margin.top),
+                ),
             };
             let dx = child_x - child_node.bounds.x;
             let dy = child_y - child_node.bounds.y;
-            offset_layout_node(
-                &mut child_node,
-                dx,
-                dy,
-            );
+            offset_layout_node(&mut child_node, dx, dy);
             node.add_child(child_node);
-            cursor_main += child_main + self.style.gap;
+            if self.style.direction != LayoutDirection::Overlay {
+                cursor_main +=
+                    child_main + main_margin(self.style.direction, margin) + self.style.gap;
+            }
         }
 
         node
@@ -258,30 +291,36 @@ impl Widget for Container {
 fn child_constraints(
     direction: LayoutDirection,
     align_items: CrossAxisAlignment,
-    inner_width: f32,
-    inner_height_limit: f32,
+    available_cross: f32,
+    available_main: f32,
     flex_main: Option<f32>,
 ) -> BoxConstraints {
     match direction {
         LayoutDirection::Vertical => BoxConstraints {
             min_width: if align_items == CrossAxisAlignment::Stretch {
-                inner_width
+                available_cross
             } else {
                 0.0
             },
-            max_width: inner_width,
+            max_width: available_cross,
             min_height: flex_main.unwrap_or(0.0),
-            max_height: flex_main.unwrap_or(inner_height_limit),
+            max_height: flex_main.unwrap_or(available_main),
         },
         LayoutDirection::Horizontal => BoxConstraints {
             min_width: flex_main.unwrap_or(0.0),
-            max_width: flex_main.unwrap_or(inner_width),
+            max_width: flex_main.unwrap_or(available_main),
             min_height: if align_items == CrossAxisAlignment::Stretch {
-                inner_height_limit
+                available_cross
             } else {
                 0.0
             },
-            max_height: inner_height_limit,
+            max_height: available_cross,
+        },
+        LayoutDirection::Overlay => BoxConstraints {
+            min_width: 0.0,
+            max_width: available_cross,
+            min_height: 0.0,
+            max_height: available_main,
         },
     }
 }
@@ -290,6 +329,7 @@ fn main_extent(direction: LayoutDirection, node: &LayoutNode) -> f32 {
     match direction {
         LayoutDirection::Vertical => node.bounds.height as f32,
         LayoutDirection::Horizontal => node.bounds.width as f32,
+        LayoutDirection::Overlay => node.bounds.height as f32,
     }
 }
 
@@ -297,6 +337,55 @@ fn cross_extent(direction: LayoutDirection, node: &LayoutNode) -> f32 {
     match direction {
         LayoutDirection::Vertical => node.bounds.width as f32,
         LayoutDirection::Horizontal => node.bounds.height as f32,
+        LayoutDirection::Overlay => node.bounds.height as f32,
+    }
+}
+
+fn main_margin(direction: LayoutDirection, margin: EdgeInsets) -> f32 {
+    match direction {
+        LayoutDirection::Vertical | LayoutDirection::Overlay => margin.vertical(),
+        LayoutDirection::Horizontal => margin.horizontal(),
+    }
+}
+
+fn cross_margin(direction: LayoutDirection, margin: EdgeInsets) -> f32 {
+    match direction {
+        LayoutDirection::Vertical => margin.horizontal(),
+        LayoutDirection::Horizontal | LayoutDirection::Overlay => margin.vertical(),
+    }
+}
+
+fn occupied_main(direction: LayoutDirection, node: &LayoutNode, margin: EdgeInsets) -> f32 {
+    main_extent(direction, node) + main_margin(direction, margin)
+}
+
+fn occupied_cross(direction: LayoutDirection, node: &LayoutNode, margin: EdgeInsets) -> f32 {
+    cross_extent(direction, node) + cross_margin(direction, margin)
+}
+
+fn available_main(
+    direction: LayoutDirection,
+    inner_width: f32,
+    inner_height_limit: f32,
+    margin: EdgeInsets,
+) -> f32 {
+    match direction {
+        LayoutDirection::Vertical => (inner_height_limit - margin.vertical()).max(0.0),
+        LayoutDirection::Overlay => (inner_height_limit - margin.vertical()).max(0.0),
+        LayoutDirection::Horizontal => (inner_width - margin.horizontal()).max(0.0),
+    }
+}
+
+fn available_cross(
+    direction: LayoutDirection,
+    inner_width: f32,
+    inner_height_limit: f32,
+    margin: EdgeInsets,
+) -> f32 {
+    match direction {
+        LayoutDirection::Vertical => (inner_width - margin.horizontal()).max(0.0),
+        LayoutDirection::Horizontal => (inner_height_limit - margin.vertical()).max(0.0),
+        LayoutDirection::Overlay => (inner_width - margin.horizontal()).max(0.0),
     }
 }
 
@@ -319,10 +408,7 @@ fn offset_layout_node(node: &mut LayoutNode, dx: i32, dy: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        canvas::Rect,
-        widgets::Widget,
-    };
+    use crate::{canvas::Rect, widgets::Widget};
 
     struct OverflowPaint {
         id: WidgetId,

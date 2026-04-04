@@ -3,7 +3,7 @@
 use crate::{
     canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -86,6 +86,10 @@ impl Widget for Checkbox {
         self.id
     }
 
+    fn outer_margin(&self) -> crate::layout::EdgeInsets {
+        self.style.margin
+    }
+
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -100,7 +104,13 @@ impl Widget for Checkbox {
             width: total_w,
             height: total_h,
         });
-        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(size.width),
+            f32_to_u32(size.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
@@ -151,7 +161,9 @@ impl Widget for Checkbox {
             Rect::new(
                 text_x,
                 text_y,
-                bounds.width.saturating_sub(f32_to_u32(BOX_SIZE + BOX_LABEL_GAP)),
+                bounds
+                    .width
+                    .saturating_sub(f32_to_u32(BOX_SIZE + BOX_LABEL_GAP)),
                 bounds.height,
             ),
             self.font_size,
@@ -234,11 +246,7 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(502), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        cb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        cb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert_eq!(es.pressed, Some(WidgetId::manual(502)));
 
         cb.handle_event(&UiEvent::MouseUp { x: 5.0, y: 5.0 }, &mut es, &layout);
@@ -252,19 +260,8 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(503), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        cb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
-        cb.handle_event(
-            &UiEvent::MouseUp {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        cb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
+        cb.handle_event(&UiEvent::MouseUp { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(!cb.is_checked());
     }
 
@@ -274,21 +271,10 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(504), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        let changed = cb.handle_event(
-            &UiEvent::MouseMove { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        let changed = cb.handle_event(&UiEvent::MouseMove { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert!(changed);
 
-        let changed = cb.handle_event(
-            &UiEvent::MouseMove {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        let changed = cb.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(changed);
     }
 
@@ -298,19 +284,11 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(505), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        cb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        cb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
         cb.handle_event(&UiEvent::MouseUp { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert!(cb.is_checked());
 
-        cb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        cb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
         cb.handle_event(&UiEvent::MouseUp { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert!(!cb.is_checked());
     }

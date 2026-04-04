@@ -4,7 +4,7 @@
 use crate::{
     canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
-    layout::{BoxConstraints, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
+    layout::{f32_to_i32, f32_to_u32, BoxConstraints, LayoutNode, LayoutStyle, Size},
     text::FontManager,
     widgets::{next_widget_id, Widget, WidgetId},
 };
@@ -96,6 +96,10 @@ impl Widget for RadioButton {
         self.id
     }
 
+    fn outer_margin(&self) -> crate::layout::EdgeInsets {
+        self.style.margin
+    }
+
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -110,19 +114,20 @@ impl Widget for RadioButton {
             width: total_w,
             height: total_h,
         });
-        LayoutNode::new(self.id, x, y, f32_to_u32(size.width), f32_to_u32(size.height))
+        LayoutNode::new(
+            self.id,
+            x,
+            y,
+            f32_to_u32(size.width),
+            f32_to_u32(size.height),
+        )
     }
 
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager) {
         let bounds = layout.bounds;
 
         let circle_y = bounds.y + f32_to_i32((bounds.height as f32 - CIRCLE_SIZE) * 0.5);
-        let circle_rect = Rect::new(
-            bounds.x,
-            circle_y,
-            CIRCLE_SIZE as u32,
-            CIRCLE_SIZE as u32,
-        );
+        let circle_rect = Rect::new(bounds.x, circle_y, CIRCLE_SIZE as u32, CIRCLE_SIZE as u32);
 
         // Outer circle -- large radius to approximate a circle.
         let outline_color = if self.is_hovered {
@@ -162,7 +167,9 @@ impl Widget for RadioButton {
             Rect::new(
                 text_x,
                 text_y,
-                bounds.width.saturating_sub(f32_to_u32(CIRCLE_SIZE + CIRCLE_LABEL_GAP)),
+                bounds
+                    .width
+                    .saturating_sub(f32_to_u32(CIRCLE_SIZE + CIRCLE_LABEL_GAP)),
                 bounds.height,
             ),
             self.font_size,
@@ -240,18 +247,13 @@ mod tests {
         let fired = Arc::new(AtomicBool::new(false));
         let f2 = fired.clone();
 
-        let mut rb =
-            RadioButton::new(WidgetId::manual(602), "Select me", 1).on_select(move || {
-                f2.store(true, Ordering::SeqCst);
-            });
+        let mut rb = RadioButton::new(WidgetId::manual(602), "Select me", 1).on_select(move || {
+            f2.store(true, Ordering::SeqCst);
+        });
         let layout = LayoutNode::new(WidgetId::manual(602), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        rb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        rb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
         rb.handle_event(&UiEvent::MouseUp { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert!(rb.is_selected());
         assert!(fired.load(Ordering::SeqCst));
@@ -274,11 +276,7 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(603), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        rb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        rb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
         rb.handle_event(&UiEvent::MouseUp { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert_eq!(count.load(Ordering::SeqCst), 0);
     }
@@ -289,19 +287,8 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(604), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        rb.handle_event(
-            &UiEvent::MouseDown { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
-        rb.handle_event(
-            &UiEvent::MouseUp {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        rb.handle_event(&UiEvent::MouseDown { x: 5.0, y: 5.0 }, &mut es, &layout);
+        rb.handle_event(&UiEvent::MouseUp { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(!rb.is_selected());
     }
 
@@ -311,21 +298,10 @@ mod tests {
         let layout = LayoutNode::new(WidgetId::manual(605), 0, 0, 100, 18);
         let mut es = EventState::default();
 
-        let changed = rb.handle_event(
-            &UiEvent::MouseMove { x: 5.0, y: 5.0 },
-            &mut es,
-            &layout,
-        );
+        let changed = rb.handle_event(&UiEvent::MouseMove { x: 5.0, y: 5.0 }, &mut es, &layout);
         assert!(changed);
 
-        let changed = rb.handle_event(
-            &UiEvent::MouseMove {
-                x: 200.0,
-                y: 200.0,
-            },
-            &mut es,
-            &layout,
-        );
+        let changed = rb.handle_event(&UiEvent::MouseMove { x: 200.0, y: 200.0 }, &mut es, &layout);
         assert!(changed);
     }
 

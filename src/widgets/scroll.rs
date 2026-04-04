@@ -129,6 +129,10 @@ impl Widget for ScrollView {
         self.id
     }
 
+    fn outer_margin(&self) -> crate::layout::EdgeInsets {
+        self.style.margin
+    }
+
     fn debug_name(&self) -> &str {
         "ScrollView"
     }

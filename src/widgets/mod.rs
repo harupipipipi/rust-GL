@@ -20,7 +20,7 @@ use crate::{
     canvas::Canvas,
     event::{EventState, UiEvent},
     keyboard::KeyboardEvent,
-    layout::{BoxConstraints, LayoutNode},
+    layout::{BoxConstraints, EdgeInsets, LayoutNode},
     text::FontManager,
 };
 
@@ -87,6 +87,11 @@ pub trait Widget {
     /// Return the widget flex factor used by containers for main-axis growth.
     fn flex_factor(&self) -> f32 {
         0.0
+    }
+
+    /// Outer margin used by parent containers during layout.
+    fn outer_margin(&self) -> EdgeInsets {
+        EdgeInsets::default()
     }
 
     /// Human-readable widget name for debugging output.

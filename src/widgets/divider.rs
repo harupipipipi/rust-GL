@@ -101,6 +101,11 @@ impl Widget for Divider {
                 let total_h = self.length.unwrap_or(constraints.max_height);
                 (total_w, total_h)
             }
+            LayoutDirection::Overlay => {
+                let total_w = self.length.unwrap_or(constraints.max_width);
+                let total_h = self.thickness + self.margin.vertical();
+                (total_w, total_h)
+            }
         };
 
         LayoutNode::new(
@@ -126,6 +131,12 @@ impl Widget for Divider {
                 b.y + f32_to_i32(self.margin.top),
                 f32_to_u32(self.thickness),
                 (b.height as f32 - self.margin.vertical()).max(0.0) as u32,
+            ),
+            LayoutDirection::Overlay => Rect::new(
+                b.x + f32_to_i32(self.margin.left),
+                b.y + f32_to_i32(self.margin.top),
+                (b.width as f32 - self.margin.horizontal()).max(0.0) as u32,
+                f32_to_u32(self.thickness),
             ),
         };
         canvas.fill_rect(rect, self.color);

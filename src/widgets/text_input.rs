@@ -350,6 +350,10 @@ impl Widget for TextInput {
         self.id
     }
 
+    fn outer_margin(&self) -> EdgeInsets {
+        self.style.margin
+    }
+
     fn debug_name(&self) -> &str {
         "TextInput"
     }
