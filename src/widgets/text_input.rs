@@ -30,6 +30,16 @@ const CURSOR_COLOR: Color = Color::rgba(0, 0, 0, 255);
 
 type TextInputCallback = Box<dyn FnMut(&str)>;
 
+fn sanitize_single_line_text(text: &str) -> String {
+    text.chars()
+        .filter_map(|ch| match ch {
+            '\r' | '\n' | '\t' => Some(' '),
+            c if c.is_control() => None,
+            c => Some(c),
+        })
+        .collect()
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // TextInput
 // ─────────────────────────────────────────────────────────────────────
@@ -121,7 +131,7 @@ impl TextInput {
 
     /// Set the text content programmatically.
     pub fn set_text(&mut self, text: impl Into<String>) {
-        self.text = text.into();
+        self.text = sanitize_single_line_text(&text.into());
         let char_len = self.char_len();
         if self.cursor > char_len {
             self.cursor = char_len;
@@ -156,8 +166,7 @@ impl TextInput {
             } => self.handle_key_down(key, modifiers, text.as_deref()),
             KeyboardEvent::ImeCommit(s) => {
                 self.delete_selection();
-                self.insert_str(s);
-                true
+                self.insert_str(s)
             }
             KeyboardEvent::ImePreedit(_, _) => {
                 // Pre-edit display is not implemented in this version.
@@ -184,11 +193,16 @@ impl TextInput {
     }
 
     /// Insert a string at the current cursor position.
-    fn insert_str(&mut self, s: &str) {
+    fn insert_str(&mut self, s: &str) -> bool {
+        let sanitized = sanitize_single_line_text(s);
+        if sanitized.is_empty() {
+            return false;
+        }
         let byte_pos = self.char_to_byte(self.cursor);
-        self.text.insert_str(byte_pos, s);
-        self.cursor += s.chars().count();
+        self.text.insert_str(byte_pos, &sanitized);
+        self.cursor += sanitized.chars().count();
         self.fire_on_change();
+        true
     }
 
     /// Delete the currently selected text, if any.  Returns `true` if
@@ -288,16 +302,14 @@ impl TextInput {
                     return false;
                 }
                 self.delete_selection();
-                self.insert_str(s);
-                true
+                self.insert_str(s)
             }
             Key::Space => {
                 if modifiers.ctrl || modifiers.meta {
                     return false;
                 }
                 self.delete_selection();
-                self.insert_str(" ");
-                true
+                self.insert_str(" ")
             }
             Key::Tab | Key::Escape | Key::Up | Key::Down | Key::Other(_) => false,
         }
@@ -866,6 +878,39 @@ mod tests {
         assert!(ti.handle_keyboard_event(&ev));
         assert_eq!(ti.text(), "日本語");
         assert_eq!(ti.cursor, 3);
+    }
+
+    #[test]
+    fn set_text_sanitizes_control_characters() {
+        let mut ti = make_input();
+        ti.set_text("A\r\nB\t\u{0007}C");
+        assert_eq!(ti.text(), "A  B C");
+    }
+
+    #[test]
+    fn ime_commit_sanitizes_newlines_and_controls() {
+        let mut ti = make_input();
+        ti.set_focused(true);
+
+        let ev = KeyboardEvent::ImeCommit("日本\r\n語\u{0000}".into());
+        assert!(ti.handle_keyboard_event(&ev));
+        assert_eq!(ti.text(), "日本  語");
+        assert_eq!(ti.cursor, 5);
+    }
+
+    #[test]
+    fn control_character_key_input_is_ignored() {
+        let mut ti = make_input();
+        ti.set_focused(true);
+
+        let ev = KeyboardEvent::KeyDown {
+            key: Key::Character("\u{0007}".into()),
+            modifiers: Modifiers::default(),
+            text: Some("\u{0007}".into()),
+        };
+        assert!(!ti.handle_keyboard_event(&ev));
+        assert_eq!(ti.text(), "");
+        assert_eq!(ti.cursor, 0);
     }
 
     #[test]
