@@ -9,6 +9,8 @@
 pub mod app;
 pub mod canvas;
 pub mod event;
+pub mod focus;
+pub mod keyboard;
 pub mod layout;
 pub mod text;
 pub mod widgets;
@@ -16,11 +18,17 @@ pub mod widgets;
 pub use app::{run, App};
 pub use canvas::{Canvas, Color, Rect};
 pub use event::{EventState, UiEvent};
-pub use layout::{BoxConstraints, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle, Size};
+pub use focus::FocusManager;
+pub use keyboard::{Key, KeyboardEvent, Modifiers};
+pub use layout::{
+    BoxConstraints, CrossAxisAlignment, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle,
+    Size,
+};
 pub use text::FontManager;
 pub use widgets::{
-    button::Button, checkbox::Checkbox, container::Container,
-    radio::RadioButton, slider::Slider, text::Text,
+    button::Button, checkbox::Checkbox, container::Container, divider::Divider,
+    radio::RadioButton, scroll::ScrollView, slider::Slider, spacer::Spacer, text::Text,
+    text_input::TextInput,
     Widget, WidgetId,
 };
 
@@ -501,7 +509,7 @@ mod tests {
         let first_bottom = node.children[0].bounds.y + node.children[0].bounds.height as i32;
         let actual_gap = node.children[1].bounds.y - first_bottom;
         assert!(
-            actual_gap >= 19 && actual_gap <= 21,
+            (19..=21).contains(&actual_gap),
             "gap between children should be ~20, got {actual_gap}"
         );
     }

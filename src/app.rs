@@ -167,8 +167,7 @@ pub fn run() -> Result<(), AppError> {
         .run(move |event, target| {
             target.set_control_flow(ControlFlow::Wait);
 
-            match event {
-                Event::WindowEvent { event, .. } => match event {
+            if let Event::WindowEvent { event, .. } = event { match event {
                     WindowEvent::CloseRequested => target.exit(),
 
                     WindowEvent::Resized(new_size) => {
@@ -226,9 +225,7 @@ pub fn run() -> Result<(), AppError> {
                     }
 
                     _ => {}
-                },
-                _ => {}
-            }
+                } }
         })
         .map_err(|e| AppError::Window(e.to_string()))
 }

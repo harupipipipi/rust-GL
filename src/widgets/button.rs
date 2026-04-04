@@ -38,9 +38,11 @@ impl Button {
 
     /// Create a new button with a specific widget ID.
     pub fn new(id: WidgetId, label: impl Into<String>) -> Self {
-        let mut style = LayoutStyle::default();
-        style.padding = EdgeInsets::all(10.0);
-        style.wrap_text = false;
+        let style = LayoutStyle {
+            padding: EdgeInsets::all(10.0),
+            wrap_text: false,
+            ..LayoutStyle::default()
+        };
         Self {
             id,
             label: label.into(),
@@ -138,7 +140,7 @@ impl Widget for Button {
             UiEvent::MouseDown { x, y } => {
                 if rect.contains(x, y) {
                     self.is_pressed = true;
-                    state.pressed = Some(self.id);
+                    state.set_pressed(Some(self.id));
                     changed = true;
                 }
             }

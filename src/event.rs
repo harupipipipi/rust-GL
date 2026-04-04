@@ -5,11 +5,26 @@
 #[non_exhaustive]
 pub enum UiEvent {
     /// The cursor moved to a new position.
-    MouseMove { x: f32, y: f32 },
+    MouseMove {
+        /// Cursor x coordinate in logical pixels.
+        x: f32,
+        /// Cursor y coordinate in logical pixels.
+        y: f32,
+    },
     /// A mouse button was pressed.
-    MouseDown { x: f32, y: f32 },
+    MouseDown {
+        /// Cursor x coordinate in logical pixels.
+        x: f32,
+        /// Cursor y coordinate in logical pixels.
+        y: f32,
+    },
     /// A mouse button was released.
-    MouseUp   { x: f32, y: f32 },
+    MouseUp {
+        /// Cursor x coordinate in logical pixels.
+        x: f32,
+        /// Cursor y coordinate in logical pixels.
+        y: f32,
+    },
 }
 
 /// Shared mutable state carried through the event-dispatch tree.

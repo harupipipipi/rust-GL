@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 //! Japanese text example — CJK rendering and word-wrap verification.
 //!
 //! Displays Japanese text, long sentences that exercise the word-wrap

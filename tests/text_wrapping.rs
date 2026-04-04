@@ -7,7 +7,6 @@
 #[path = "test_utils.rs"]
 mod test_utils;
 
-use rust2d_ui::*;
 
 // ─────────────────────────────────────────────────────────────
 // wrap_text — empty string

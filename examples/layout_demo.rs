@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 //! Layout demo — nested containers with different layout directions.
 //!
 //! Demonstrates `Container` nesting: an outer `Vertical` container holds

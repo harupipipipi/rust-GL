@@ -82,6 +82,19 @@ pub enum LayoutDirection {
     Horizontal,
 }
 
+/// Cross-axis alignment applied by container widgets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CrossAxisAlignment {
+    /// Position children at the start of the cross axis.
+    Start,
+    /// Center children on the cross axis.
+    Center,
+    /// Position children at the end of the cross axis.
+    End,
+    /// Expand children to fill the available cross-axis space.
+    Stretch,
+}
+
 /// Style hints consumed during layout.
 #[derive(Debug, Clone)]
 pub struct LayoutStyle {
@@ -93,6 +106,8 @@ pub struct LayoutStyle {
     pub gap: f32,
     /// Flow direction.
     pub direction: LayoutDirection,
+    /// Cross-axis alignment for child placement inside containers.
+    pub align_items: CrossAxisAlignment,
     /// Whether to wrap text.
     pub wrap_text: bool,
 }
@@ -104,6 +119,7 @@ impl Default for LayoutStyle {
             margin: EdgeInsets::all(0.0),
             gap: 8.0,
             direction: LayoutDirection::Vertical,
+            align_items: CrossAxisAlignment::Start,
             wrap_text: true,
         }
     }

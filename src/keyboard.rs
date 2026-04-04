@@ -16,17 +16,29 @@ use winit::keyboard::{Key as WinitKey, NamedKey};
 pub enum Key {
     /// A printable character (one or more Unicode scalars).
     Character(String),
+    /// The Enter / Return key.
     Enter,
+    /// The Tab key.
     Tab,
+    /// The Backspace key.
     Backspace,
+    /// The Delete key.
     Delete,
+    /// The left arrow key.
     Left,
+    /// The right arrow key.
     Right,
+    /// The up arrow key.
     Up,
+    /// The down arrow key.
     Down,
+    /// The Home key.
     Home,
+    /// The End key.
     End,
+    /// The Escape key.
     Escape,
+    /// The space bar.
     Space,
     /// A named key that we have not mapped to a dedicated variant.
     Other(String),
@@ -69,8 +81,11 @@ impl Key {
 /// Modifier key state snapshot.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Modifiers {
+    /// Whether Shift is currently pressed.
     pub shift: bool,
+    /// Whether Control is currently pressed.
     pub ctrl: bool,
+    /// Whether Alt/Option is currently pressed.
     pub alt: bool,
     /// Cmd on macOS, Win key on Windows.
     pub meta: bool,
@@ -83,14 +98,20 @@ pub struct Modifiers {
 /// High-level keyboard / IME events.
 #[derive(Debug, Clone)]
 pub enum KeyboardEvent {
+    /// A key was pressed.
     KeyDown {
+        /// Logical key value.
         key: Key,
+        /// Modifier snapshot captured for this event.
         modifiers: Modifiers,
         /// The text produced by this key press, if any.
         text: Option<String>,
     },
+    /// A key was released.
     KeyUp {
+        /// Logical key value.
         key: Key,
+        /// Modifier snapshot captured for this event.
         modifiers: Modifiers,
     },
     /// IME composition committed.

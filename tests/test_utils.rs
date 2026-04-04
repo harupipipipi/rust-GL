@@ -1,6 +1,7 @@
 //! Shared helpers for integration tests.
 
 #![allow(dead_code)]
+#![allow(unused_macros)]
 
 use rust2d_ui::*;
 

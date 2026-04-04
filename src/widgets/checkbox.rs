@@ -17,21 +17,25 @@ const BOX_RADIUS: u32 = 3;
 /// Inset of the inner check-mark fill relative to the box edge.
 const CHECK_INSET: i32 = 4;
 
+/// A checkbox control with a text label and toggle callback.
 pub struct Checkbox {
     id: WidgetId,
     label: String,
     checked: bool,
     is_hovered: bool,
     font_size: f32,
+    /// Layout hints used when measuring and placing the widget.
     pub style: LayoutStyle,
     on_toggle: Option<Box<dyn FnMut(bool)>>,
 }
 
 impl Checkbox {
+    /// Create a checkbox with an auto-generated widget ID.
     pub fn new_auto(label: impl Into<String>) -> Self {
         Self::new(next_widget_id(), label)
     }
 
+    /// Create a checkbox with an explicit widget ID.
     pub fn new(id: WidgetId, label: impl Into<String>) -> Self {
         Self {
             id,
@@ -46,16 +50,19 @@ impl Checkbox {
 
     // -- Builder methods --
 
+    /// Set the initial checked state.
     pub fn checked(mut self, value: bool) -> Self {
         self.checked = value;
         self
     }
 
+    /// Attach a callback fired after the checked state changes.
     pub fn on_toggle(mut self, f: impl FnMut(bool) + 'static) -> Self {
         self.on_toggle = Some(Box::new(f));
         self
     }
 
+    /// Set the label font size in logical pixels.
     pub fn font_size(mut self, px: f32) -> Self {
         self.font_size = px;
         self
@@ -63,10 +70,12 @@ impl Checkbox {
 
     // -- Getters --
 
+    /// Return whether the checkbox is currently checked.
     pub fn is_checked(&self) -> bool {
         self.checked
     }
 
+    /// Update the checked state programmatically.
     pub fn set_checked(&mut self, value: bool) {
         self.checked = value;
     }
@@ -166,7 +175,7 @@ impl Widget for Checkbox {
             }
             UiEvent::MouseDown { x, y } => {
                 if rect.contains(x, y) {
-                    state.pressed = Some(self.id);
+                    state.set_pressed(Some(self.id));
                 }
             }
             UiEvent::MouseUp { x, y } => {

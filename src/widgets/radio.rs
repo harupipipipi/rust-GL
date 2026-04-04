@@ -20,6 +20,7 @@ const DOT_SIZE: f32 = 10.0;
 /// Corner radius for the inner dot (half of dot size = full circle).
 const DOT_RADIUS: u32 = 5;
 
+/// A radio button with a text label and caller-managed group selection.
 pub struct RadioButton {
     id: WidgetId,
     label: String,
@@ -27,15 +28,18 @@ pub struct RadioButton {
     group: u32,
     is_hovered: bool,
     font_size: f32,
+    /// Layout hints used when measuring and placing the widget.
     pub style: LayoutStyle,
     on_select: Option<Box<dyn FnMut()>>,
 }
 
 impl RadioButton {
+    /// Create a radio button with an auto-generated widget ID.
     pub fn new_auto(label: impl Into<String>, group: u32) -> Self {
         Self::new(next_widget_id(), label, group)
     }
 
+    /// Create a radio button with an explicit widget ID and group.
     pub fn new(id: WidgetId, label: impl Into<String>, group: u32) -> Self {
         Self {
             id,
@@ -51,16 +55,19 @@ impl RadioButton {
 
     // -- Builder methods --
 
+    /// Set the initial selected state.
     pub fn selected(mut self, value: bool) -> Self {
         self.selected = value;
         self
     }
 
+    /// Attach a callback fired when this radio button becomes selected.
     pub fn on_select(mut self, f: impl FnMut() + 'static) -> Self {
         self.on_select = Some(Box::new(f));
         self
     }
 
+    /// Set the label font size in logical pixels.
     pub fn font_size(mut self, px: f32) -> Self {
         self.font_size = px;
         self
@@ -68,14 +75,17 @@ impl RadioButton {
 
     // -- Getters / Setters --
 
+    /// Return whether this radio button is currently selected.
     pub fn is_selected(&self) -> bool {
         self.selected
     }
 
+    /// Update the selected state programmatically.
     pub fn set_selected(&mut self, value: bool) {
         self.selected = value;
     }
 
+    /// Return the logical radio group ID assigned by the caller.
     pub fn group(&self) -> u32 {
         self.group
     }
@@ -176,7 +186,7 @@ impl Widget for RadioButton {
             }
             UiEvent::MouseDown { x, y } => {
                 if rect.contains(x, y) {
-                    state.pressed = Some(self.id);
+                    state.set_pressed(Some(self.id));
                 }
             }
             UiEvent::MouseUp { x, y } => {

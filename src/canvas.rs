@@ -128,6 +128,7 @@ pub struct Canvas {
     width: u32,
     height: u32,
     pixels: Vec<u32>,
+    clip_rect: Option<Rect>,
 }
 
 impl Canvas {
@@ -139,6 +140,7 @@ impl Canvas {
             width: w,
             height: h,
             pixels: vec![0u32; w as usize * h as usize],
+            clip_rect: None,
         }
     }
 
@@ -176,6 +178,21 @@ impl Canvas {
     /// Access the raw pixel data.
     #[inline]
     pub fn pixels(&self) -> &[u32] { &self.pixels }
+
+    /// Restrict subsequent drawing operations to the intersection with `rect`.
+    pub fn set_clip(&mut self, rect: Rect) {
+        self.clip_rect = Some(rect);
+    }
+
+    /// Remove the current clipping rectangle.
+    pub fn clear_clip(&mut self) {
+        self.clip_rect = None;
+    }
+
+    /// Return the currently active clipping rectangle, if any.
+    pub fn clip_rect(&self) -> Option<Rect> {
+        self.clip_rect
+    }
 
     /// Fill every pixel.
     pub fn clear(&mut self, color: Color) {
@@ -311,10 +328,17 @@ impl Canvas {
 
     #[inline]
     fn clip(&self, r: &Rect) -> (usize, usize, usize, usize) {
-        let x0 = r.x.max(0) as usize;
-        let y0 = r.y.max(0) as usize;
-        let x1 = r.right_i64().min(self.width as i64).max(0) as usize;
-        let y1 = r.bottom_i64().min(self.height as i64).max(0) as usize;
+        let mut x0 = r.x.max(0) as usize;
+        let mut y0 = r.y.max(0) as usize;
+        let mut x1 = r.right_i64().min(self.width as i64).max(0) as usize;
+        let mut y1 = r.bottom_i64().min(self.height as i64).max(0) as usize;
+
+        if let Some(clip) = self.clip_rect {
+            x0 = x0.max(clip.x.max(0) as usize);
+            y0 = y0.max(clip.y.max(0) as usize);
+            x1 = x1.min(clip.right_i64().min(self.width as i64).max(0) as usize);
+            y1 = y1.min(clip.bottom_i64().min(self.height as i64).max(0) as usize);
+        }
         (x0, y0, x1, y1)
     }
 }

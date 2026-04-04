@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 //! Styling example — customise widget colours and text appearance.
 //!
 //! Shows how to override `Button` fields (`normal_bg`, `hover_bg`,

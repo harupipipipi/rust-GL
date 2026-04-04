@@ -129,16 +129,7 @@ impl FontManager {
         for ch in line.chars() {
             let cw = self.font.metrics(ch, px).advance_width;
 
-            if is_cjk(ch) {
-                flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
-                           max_width, &mut result);
-                if cur_w + cw > max_width && !current.is_empty() {
-                    result.push(std::mem::take(&mut current));
-                    cur_w = 0.0;
-                }
-                current.push(ch);
-                cur_w += cw;
-            } else if ch == ' ' {
+            if is_cjk(ch) || ch == ' ' {
                 flush_word(&mut current, &mut cur_w, &mut word, &mut word_w,
                            max_width, &mut result);
                 if cur_w + cw > max_width && !current.is_empty() {
@@ -164,6 +155,7 @@ impl FontManager {
     // ── Drawing ──────────────────────────────────────────────────
 
     /// Draw text with top-left at `(x, y)`.
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_text(
         &self,
         canvas: &mut Canvas,

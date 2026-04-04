@@ -19,6 +19,7 @@ const THUMB_RADIUS: u32 = 4;
 /// Corner radius for the track.
 const TRACK_RADIUS: u32 = 3;
 
+/// A horizontal slider for selecting a numeric value within a range.
 pub struct Slider {
     id: WidgetId,
     value: f32,
@@ -27,15 +28,18 @@ pub struct Slider {
     step: Option<f32>,
     is_dragging: bool,
     is_hovered: bool,
+    /// Layout hints used when measuring and placing the widget.
     pub style: LayoutStyle,
     on_change: Option<Box<dyn FnMut(f32)>>,
 }
 
 impl Slider {
+    /// Create a slider with an auto-generated widget ID.
     pub fn new_auto() -> Self {
         Self::new(next_widget_id())
     }
 
+    /// Create a slider with an explicit widget ID.
     pub fn new(id: WidgetId) -> Self {
         Self {
             id,
@@ -52,22 +56,26 @@ impl Slider {
 
     // -- Builder methods --
 
+    /// Set the initial slider value.
     pub fn value(mut self, v: f32) -> Self {
         self.value = v;
         self
     }
 
+    /// Set the inclusive slider range.
     pub fn range(mut self, min: f32, max: f32) -> Self {
         self.min = min;
         self.max = max;
         self
     }
 
+    /// Enable snapping to the given positive step size.
     pub fn step(mut self, s: f32) -> Self {
         self.step = Some(s);
         self
     }
 
+    /// Attach a callback fired whenever the value changes.
     pub fn on_change(mut self, f: impl FnMut(f32) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
@@ -75,10 +83,12 @@ impl Slider {
 
     // -- Getters / Setters --
 
+    /// Return the current slider value.
     pub fn get_value(&self) -> f32 {
         self.value
     }
 
+    /// Update the slider value programmatically, clamping and snapping it.
     pub fn set_value(&mut self, v: f32) {
         self.value = self.snap(v.clamp(self.min, self.max));
     }
@@ -215,7 +225,7 @@ impl Widget for Slider {
             UiEvent::MouseDown { x, y } => {
                 if bounds.contains(x, y) {
                     self.is_dragging = true;
-                    state.pressed = Some(self.id);
+                    state.set_pressed(Some(self.id));
                     let new_val = self.x_to_value(x, tx, tw);
                     if (new_val - self.value).abs() > f32::EPSILON {
                         self.value = new_val;

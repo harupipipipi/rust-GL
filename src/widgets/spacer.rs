@@ -81,6 +81,10 @@ impl Widget for Spacer {
     ) -> bool {
         false
     }
+
+    fn flex_factor(&self) -> f32 {
+        self.flex
+    }
 }
 
 #[cfg(test)]

@@ -6,9 +6,13 @@
 pub mod button;
 pub mod checkbox;
 pub mod container;
+pub mod divider;
 pub mod radio;
+pub mod scroll;
 pub mod slider;
+pub mod spacer;
 pub mod text;
+pub mod text_input;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -46,8 +50,10 @@ impl WidgetId {
 
 /// The core trait implemented by every UI widget.
 pub trait Widget {
+    /// Return this widget's stable identifier.
     fn id(&self) -> WidgetId;
 
+    /// Compute the widget layout for the given constraints and origin.
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -56,12 +62,24 @@ pub trait Widget {
         fonts: &FontManager,
     ) -> LayoutNode;
 
+    /// Paint the widget into the provided canvas.
     fn draw(&self, canvas: &mut Canvas, layout: &LayoutNode, fonts: &FontManager);
 
+    /// Handle a pointer event. Returns `true` when widget state changed.
     fn handle_event(
         &mut self,
         event: &UiEvent,
         state: &mut EventState,
         layout: &LayoutNode,
     ) -> bool;
+
+    /// Return the widget flex factor used by containers for main-axis growth.
+    fn flex_factor(&self) -> f32 {
+        0.0
+    }
+
+    /// Human-readable widget name for debugging output.
+    fn debug_name(&self) -> &str {
+        "Widget"
+    }
 }

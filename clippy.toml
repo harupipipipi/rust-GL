@@ -3,7 +3,7 @@
 
 # Minimum Supported Rust Version — keeps Clippy from suggesting
 # features unavailable on older toolchains.
-msrv = "1.70.0"
+msrv = "1.65.0"
 
 # Cognitive complexity threshold (default 25, stricter here)
 cognitive-complexity-threshold = 30

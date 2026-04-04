@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 //! Counter example — demonstrates shared mutable state with `AtomicU32`.
 //!
 //! A minimal pattern for manipulating state from a button callback:

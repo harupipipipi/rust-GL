@@ -28,6 +28,8 @@ const BACKGROUND_COLOR: Color = Color::rgba(255, 255, 255, 255);
 const PLACEHOLDER_COLOR: Color = Color::rgba(160, 160, 160, 255);
 const CURSOR_COLOR: Color = Color::rgba(0, 0, 0, 255);
 
+type TextInputCallback = Box<dyn FnMut(&str)>;
+
 // ─────────────────────────────────────────────────────────────────────
 // TextInput
 // ─────────────────────────────────────────────────────────────────────
@@ -46,8 +48,8 @@ pub struct TextInput {
     scroll_offset: f32,
     font_size: f32,
     style: LayoutStyle,
-    on_change: Option<Box<dyn FnMut(&str)>>,
-    on_submit: Option<Box<dyn FnMut(&str)>>,
+    on_change: Option<TextInputCallback>,
+    on_submit: Option<TextInputCallback>,
 }
 
 impl TextInput {
@@ -58,14 +60,16 @@ impl TextInput {
 
     /// Create a new `TextInput` with a specific widget ID.
     pub fn new(id: WidgetId) -> Self {
-        let mut style = LayoutStyle::default();
-        style.padding = EdgeInsets {
-            top: PADDING_V,
-            right: PADDING_H,
-            bottom: PADDING_V,
-            left: PADDING_H,
+        let style = LayoutStyle {
+            padding: EdgeInsets {
+                top: PADDING_V,
+                right: PADDING_H,
+                bottom: PADDING_V,
+                left: PADDING_H,
+            },
+            wrap_text: false,
+            ..LayoutStyle::default()
         };
-        style.wrap_text = false;
 
         Self {
             id,
@@ -493,7 +497,7 @@ impl Widget for TextInput {
                         changed = true;
                     }
                     self.selection = None;
-                    state.pressed = Some(self.id);
+                    state.set_pressed(Some(self.id));
                 } else if self.is_focused {
                     self.is_focused = false;
                     changed = true;
