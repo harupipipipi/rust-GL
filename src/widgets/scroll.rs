@@ -178,8 +178,11 @@ impl Widget for ScrollView {
             return;
         }
 
-        // Clip child drawing to viewport.
-        canvas.set_clip(vp);
+        // Clip child drawing to viewport and preserve any parent clip.
+        let previous_clip = canvas.replace_clip_rect(Some(match canvas.clip_rect() {
+            Some(current) => current.intersect(&vp),
+            None => vp,
+        }));
 
         if let Some(ref child_layout) = self.child_layout {
             let mut offset_layout = child_layout.clone();
@@ -188,7 +191,7 @@ impl Widget for ScrollView {
             self.child.draw(canvas, &offset_layout, fonts);
         }
 
-        canvas.clear_clip();
+        canvas.replace_clip_rect(previous_clip);
 
         // Draw scrollbar outside clip so it always appears.
         if self.is_scrollable() {

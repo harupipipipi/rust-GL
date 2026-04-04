@@ -19,6 +19,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::{
     canvas::Canvas,
     event::{EventState, UiEvent},
+    keyboard::KeyboardEvent,
     layout::{BoxConstraints, LayoutNode},
     text::FontManager,
 };
@@ -72,6 +73,16 @@ pub trait Widget {
         state: &mut EventState,
         layout: &LayoutNode,
     ) -> bool;
+
+    /// Handle a keyboard event. Returns `true` when widget state changed.
+    fn handle_keyboard_event(
+        &mut self,
+        _event: &KeyboardEvent,
+        _state: &mut EventState,
+        _layout: &LayoutNode,
+    ) -> bool {
+        false
+    }
 
     /// Return the widget flex factor used by containers for main-axis growth.
     fn flex_factor(&self) -> f32 {

@@ -95,6 +95,15 @@ pub enum CrossAxisAlignment {
     Stretch,
 }
 
+/// Overflow behavior for painted child content.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverflowBehavior {
+    /// Clip child drawing to the parent bounds.
+    Clip,
+    /// Allow child drawing to extend outside the parent bounds.
+    Visible,
+}
+
 /// Style hints consumed during layout.
 #[derive(Debug, Clone)]
 pub struct LayoutStyle {
@@ -108,6 +117,8 @@ pub struct LayoutStyle {
     pub direction: LayoutDirection,
     /// Cross-axis alignment for child placement inside containers.
     pub align_items: CrossAxisAlignment,
+    /// Overflow behavior for descendant drawing.
+    pub overflow: OverflowBehavior,
     /// Whether to wrap text.
     pub wrap_text: bool,
 }
@@ -120,6 +131,7 @@ impl Default for LayoutStyle {
             gap: 8.0,
             direction: LayoutDirection::Vertical,
             align_items: CrossAxisAlignment::Start,
+            overflow: OverflowBehavior::Clip,
             wrap_text: true,
         }
     }

@@ -102,6 +102,18 @@ impl Rect {
         Rect::new(x0, y0, (x1 - x0).max(0) as u32, (y1 - y0).max(0) as u32)
     }
 
+    /// Overlapping region shared by both rectangles.
+    pub fn intersect(&self, other: &Rect) -> Rect {
+        let x0 = self.x.max(other.x) as i64;
+        let y0 = self.y.max(other.y) as i64;
+        let x1 = self.right_i64().min(other.right_i64());
+        let y1 = self.bottom_i64().min(other.bottom_i64());
+        if x1 <= x0 || y1 <= y0 {
+            return Rect::ZERO;
+        }
+        Rect::new(x0 as i32, y0 as i32, (x1 - x0) as u32, (y1 - y0) as u32)
+    }
+
     /// Returns `true` if width or height is zero.
     #[inline]
     pub const fn is_empty(&self) -> bool {
@@ -181,7 +193,10 @@ impl Canvas {
 
     /// Restrict subsequent drawing operations to the intersection with `rect`.
     pub fn set_clip(&mut self, rect: Rect) {
-        self.clip_rect = Some(rect);
+        self.clip_rect = Some(match self.clip_rect {
+            Some(current) => current.intersect(&rect),
+            None => rect,
+        });
     }
 
     /// Remove the current clipping rectangle.
@@ -192,6 +207,13 @@ impl Canvas {
     /// Return the currently active clipping rectangle, if any.
     pub fn clip_rect(&self) -> Option<Rect> {
         self.clip_rect
+    }
+
+    /// Replace the active clip rectangle, returning the previous value.
+    pub fn replace_clip_rect(&mut self, clip_rect: Option<Rect>) -> Option<Rect> {
+        let previous = self.clip_rect;
+        self.clip_rect = clip_rect;
+        previous
     }
 
     /// Fill every pixel.
@@ -302,6 +324,11 @@ impl Canvas {
     pub fn blend_pixel(&mut self, x: i32, y: i32, src: Color) {
         if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
             return;
+        }
+        if let Some(clip) = self.clip_rect {
+            if !clip.contains(x as f32, y as f32) {
+                return;
+            }
         }
         self.blend_unchecked(x as usize, y as usize, src);
     }

@@ -1,7 +1,7 @@
 //! A clickable button widget with hover / pressed states.
 
 use crate::{
-    canvas::{Canvas, Color},
+    canvas::{Canvas, Color, Rect},
     event::{EventState, UiEvent},
     layout::{BoxConstraints, EdgeInsets, LayoutNode, LayoutStyle, Size, f32_to_i32, f32_to_u32},
     text::FontManager,
@@ -107,14 +107,15 @@ impl Widget for Button {
         }
 
         let text_y = rect.y + f32_to_i32(rect.height as f32 * 0.5 - self.font_size * 0.5);
-        fonts.draw_text(
+        fonts.draw_text_in_rect(
             canvas,
             &self.label,
-            rect.x + f32_to_i32(self.style.padding.left),
-            text_y,
-            Some(f32_to_u32(
-                (rect.width as f32 - self.style.padding.horizontal()).max(0.0),
-            )),
+            Rect::new(
+                rect.x + f32_to_i32(self.style.padding.left),
+                text_y,
+                f32_to_u32((rect.width as f32 - self.style.padding.horizontal()).max(0.0)),
+                rect.height,
+            ),
             self.font_size,
             self.text_color,
         );

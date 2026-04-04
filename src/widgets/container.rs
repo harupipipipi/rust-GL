@@ -3,8 +3,10 @@
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
+    keyboard::KeyboardEvent,
     layout::{
         BoxConstraints, CrossAxisAlignment, LayoutDirection, LayoutNode, LayoutStyle,
+        OverflowBehavior,
         f32_to_i32, f32_to_u32,
     },
     text::FontManager,
@@ -179,6 +181,15 @@ impl Widget for Container {
             canvas.fill_rect(layout.bounds, bg);
         }
 
+        let previous_clip = if self.style.overflow == OverflowBehavior::Clip {
+            Some(canvas.replace_clip_rect(Some(match canvas.clip_rect() {
+                Some(current) => current.intersect(&layout.bounds),
+                None => layout.bounds,
+            })))
+        } else {
+            None
+        };
+
         debug_assert_eq!(
             self.children.len(),
             layout.children.len(),
@@ -189,6 +200,10 @@ impl Widget for Container {
         let len = self.children.len().min(layout.children.len());
         for i in 0..len {
             self.children[i].draw(canvas, &layout.children[i], fonts);
+        }
+
+        if let Some(previous_clip) = previous_clip {
+            canvas.replace_clip_rect(previous_clip);
         }
     }
 
@@ -207,9 +222,34 @@ impl Widget for Container {
             self.id,
         );
 
+        if self.style.overflow == OverflowBehavior::Clip
+            && matches!(*event, UiEvent::MouseDown { x, y } if !layout.bounds.contains(x, y))
+        {
+            return false;
+        }
+
         let len = self.children.len().min(layout.children.len());
         for i in 0..len {
             changed |= self.children[i].handle_event(event, state, &layout.children[i]);
+        }
+        changed
+    }
+
+    fn handle_keyboard_event(
+        &mut self,
+        event: &KeyboardEvent,
+        state: &mut EventState,
+        layout: &LayoutNode,
+    ) -> bool {
+        let mut changed = false;
+
+        let len = self.children.len().min(layout.children.len());
+        for i in 0..len {
+            changed |= self.children[i].handle_keyboard_event(event, state, &layout.children[i]);
+        }
+
+        if changed {
+            state.request_redraw();
         }
         changed
     }
@@ -273,5 +313,97 @@ fn offset_layout_node(node: &mut LayoutNode, dx: i32, dy: i32) {
     node.bounds.y += dy;
     for child in &mut node.children {
         offset_layout_node(child, dx, dy);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        canvas::Rect,
+        widgets::Widget,
+    };
+
+    struct OverflowPaint {
+        id: WidgetId,
+    }
+
+    impl OverflowPaint {
+        fn new(id: WidgetId) -> Self {
+            Self { id }
+        }
+    }
+
+    impl Widget for OverflowPaint {
+        fn id(&self) -> WidgetId {
+            self.id
+        }
+
+        fn layout(
+            &mut self,
+            _constraints: BoxConstraints,
+            x: i32,
+            y: i32,
+            _fonts: &FontManager,
+        ) -> LayoutNode {
+            LayoutNode::new(self.id, x, y, 20, 20)
+        }
+
+        fn draw(&self, canvas: &mut Canvas, _layout: &LayoutNode, _fonts: &FontManager) {
+            canvas.fill_rect(Rect::new(0, 0, 40, 40), Color::BLACK);
+        }
+
+        fn handle_event(
+            &mut self,
+            _event: &UiEvent,
+            _state: &mut EventState,
+            _layout: &LayoutNode,
+        ) -> bool {
+            false
+        }
+    }
+
+    fn try_fonts() -> Option<FontManager> {
+        FontManager::new().ok()
+    }
+
+    #[test]
+    fn container_clips_child_overflow_by_default() {
+        let fm = match try_fonts() {
+            Some(f) => f,
+            None => return,
+        };
+        let mut container = Container::new(WidgetId::manual(1));
+        container.background = Some(Color::WHITE);
+        container.push(OverflowPaint::new(WidgetId::manual(2)));
+        let mut layout = LayoutNode::new(container.id(), 10, 10, 20, 20);
+        layout.add_child(LayoutNode::new(WidgetId::manual(2), 10, 10, 20, 20));
+
+        let mut canvas = Canvas::new(60, 60);
+        canvas.clear(Color::WHITE);
+        container.draw(&mut canvas, &layout, &fm);
+
+        assert_eq!(canvas.pixels()[0], Color::WHITE.to_u32());
+        assert_eq!(canvas.pixels()[10 * 60 + 10], Color::BLACK.to_u32());
+    }
+
+    #[test]
+    fn container_can_allow_visible_overflow() {
+        let fm = match try_fonts() {
+            Some(f) => f,
+            None => return,
+        };
+        let mut container = Container::new(WidgetId::manual(1));
+        container.style.overflow = OverflowBehavior::Visible;
+        container.background = None;
+        container.push(OverflowPaint::new(WidgetId::manual(2)));
+        let mut layout = LayoutNode::new(container.id(), 10, 10, 20, 20);
+        layout.add_child(LayoutNode::new(WidgetId::manual(2), 10, 10, 20, 20));
+
+        let mut canvas = Canvas::new(60, 60);
+        canvas.clear(Color::WHITE);
+        container.draw(&mut canvas, &layout, &fm);
+
+        assert_eq!(canvas.pixels()[0], Color::BLACK.to_u32());
     }
 }

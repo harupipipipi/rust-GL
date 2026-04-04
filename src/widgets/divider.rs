@@ -16,6 +16,7 @@ pub struct Divider {
     id: WidgetId,
     direction: LayoutDirection,
     thickness: f32,
+    length: Option<f32>,
     color: Color,
     margin: EdgeInsets,
 }
@@ -27,6 +28,7 @@ impl Divider {
             id: next_widget_id(),
             direction: LayoutDirection::Horizontal,
             thickness: 1.0,
+            length: None,
             color: Color::GRAY_300,
             margin: EdgeInsets::default(),
         }
@@ -38,6 +40,7 @@ impl Divider {
             id: next_widget_id(),
             direction: LayoutDirection::Vertical,
             thickness: 1.0,
+            length: None,
             color: Color::GRAY_300,
             margin: EdgeInsets::default(),
         }
@@ -52,6 +55,15 @@ impl Divider {
     /// Set the line thickness in pixels.
     pub fn thickness(mut self, thickness: f32) -> Self {
         self.thickness = thickness.max(0.0);
+        self
+    }
+
+    /// Set an explicit divider length along its main axis.
+    ///
+    /// For a horizontal divider this controls width.
+    /// For a vertical divider this controls height.
+    pub fn length(mut self, length: f32) -> Self {
+        self.length = Some(length.max(0.0));
         self
     }
 
@@ -80,13 +92,13 @@ impl Widget for Divider {
     ) -> LayoutNode {
         let (w, h) = match self.direction {
             LayoutDirection::Horizontal => {
-                let total_w = constraints.max_width;
+                let total_w = self.length.unwrap_or(constraints.max_width);
                 let total_h = self.thickness + self.margin.vertical();
                 (total_w, total_h)
             }
             LayoutDirection::Vertical => {
                 let total_w = self.thickness + self.margin.horizontal();
-                let total_h = constraints.max_height;
+                let total_h = self.length.unwrap_or(constraints.max_height);
                 (total_w, total_h)
             }
         };
@@ -163,6 +175,19 @@ mod tests {
         assert_eq!(node.bounds.height, 600);
         assert_eq!(node.bounds.x, 10);
         assert_eq!(node.bounds.y, 20);
+    }
+
+    #[test]
+    fn vertical_divider_fixed_length() {
+        let fm = match try_fonts() {
+            Some(f) => f,
+            None => return,
+        };
+        let mut d = Divider::new_vertical().thickness(3.0).length(24.0);
+        let c = BoxConstraints::loose(400.0, 600.0);
+        let node = d.layout(c, 0, 0, &fm);
+        assert_eq!(node.bounds.width, 3);
+        assert_eq!(node.bounds.height, 24);
     }
 
     #[test]

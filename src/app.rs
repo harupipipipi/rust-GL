@@ -9,14 +9,16 @@ use softbuffer::{Context, Surface};
 use thiserror::Error;
 use winit::{
     dpi::LogicalSize,
-    event::{ElementState, Event, MouseButton, WindowEvent},
+    event::{ElementState, Event, Ime, MouseButton, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::ModifiersState,
     window::WindowBuilder,
 };
 
 use crate::{
     canvas::{Canvas, Color},
     event::{EventState, UiEvent},
+    keyboard::{KeyboardEvent, Modifiers},
     layout::BoxConstraints,
     text::{FontManager, TextError},
     widgets::{
@@ -47,6 +49,7 @@ pub struct App {
     layout_tree: Option<crate::layout::LayoutNode>,
     event_state: EventState,
     background: Color,
+    modifiers: Modifiers,
 }
 
 impl App {
@@ -63,6 +66,7 @@ impl App {
             layout_tree: None,
             event_state: EventState::default(),
             background: Color::WHITE,
+            modifiers: Modifiers::default(),
         })
     }
 
@@ -109,6 +113,15 @@ impl App {
         // `layout.clone()` on every event.
         if let Some(layout) = self.layout_tree.take() {
             self.root.handle_event(&event, &mut self.event_state, &layout);
+            self.layout_tree = Some(layout);
+        }
+    }
+
+    /// Dispatch a keyboard event to the widget tree.
+    pub fn handle_keyboard_event(&mut self, event: KeyboardEvent) {
+        if let Some(layout) = self.layout_tree.take() {
+            self.root
+                .handle_keyboard_event(&event, &mut self.event_state, &layout);
             self.layout_tree = Some(layout);
         }
     }
@@ -205,6 +218,27 @@ pub fn run() -> Result<(), AppError> {
                         window.request_redraw();
                     }
 
+                    WindowEvent::KeyboardInput { event, .. } => {
+                        let keyboard_event =
+                            KeyboardEvent::from_winit(&event, app.modifiers);
+                        app.handle_keyboard_event(keyboard_event);
+                        window.request_redraw();
+                    }
+
+                    WindowEvent::Ime(Ime::Commit(text)) => {
+                        app.handle_keyboard_event(KeyboardEvent::ImeCommit(text));
+                        window.request_redraw();
+                    }
+
+                    WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
+                        app.handle_keyboard_event(KeyboardEvent::ImePreedit(text, cursor));
+                        window.request_redraw();
+                    }
+
+                    WindowEvent::ModifiersChanged(new_modifiers) => {
+                        app.modifiers = modifiers_from_winit(new_modifiers.state());
+                    }
+
                     WindowEvent::RedrawRequested => {
                         if app.redraw() {
                             match surface.buffer_mut() {
@@ -228,4 +262,13 @@ pub fn run() -> Result<(), AppError> {
                 } }
         })
         .map_err(|e| AppError::Window(e.to_string()))
+}
+
+fn modifiers_from_winit(modifiers: ModifiersState) -> Modifiers {
+    Modifiers {
+        shift: modifiers.shift_key(),
+        ctrl: modifiers.control_key(),
+        alt: modifiers.alt_key(),
+        meta: modifiers.super_key(),
+    }
 }

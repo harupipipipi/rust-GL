@@ -180,7 +180,7 @@ impl FontManager {
 
             for ch in line.chars() {
                 let (metrics, bitmap) = self.font.rasterize(ch, px);
-                let glyph_top = baseline_y - metrics.height as i32 + metrics.ymin;
+                let glyph_top = baseline_y - metrics.height as i32 - metrics.ymin;
 
                 for gy in 0..metrics.height {
                     for gx in 0..metrics.width {
@@ -207,7 +207,13 @@ impl FontManager {
         px: f32,
         color: Color,
     ) {
+        let clip = match canvas.clip_rect() {
+            Some(current) => current.intersect(&rect),
+            None => rect,
+        };
+        let previous_clip = canvas.replace_clip_rect(Some(clip));
         self.draw_text(canvas, text, rect.x, rect.y, Some(rect.width), px, color);
+        canvas.replace_clip_rect(previous_clip);
     }
 }
 

@@ -421,25 +421,28 @@ impl Widget for TextInput {
             }
         }
 
+        let text_clip = Rect::new(
+            text_x,
+            text_y,
+            f32_to_u32(visible_width),
+            f32_to_u32(self.font_size.max(0.0)),
+        );
+
         // Text or placeholder
         if self.text.is_empty() && !self.is_focused {
-            fonts.draw_text(
+            fonts.draw_text_in_rect(
                 canvas,
                 &self.placeholder,
-                text_x,
-                text_y,
-                Some(f32_to_u32(visible_width)),
+                text_clip,
                 self.font_size,
                 PLACEHOLDER_COLOR,
             );
         } else {
             let draw_x = text_x - f32_to_i32(self.scroll_offset);
-            fonts.draw_text(
+            fonts.draw_text_in_rect(
                 canvas,
                 &self.text,
-                draw_x,
-                text_y,
-                None,
+                Rect::new(draw_x, text_y, rect.width, text_clip.height),
                 self.font_size,
                 Color::BLACK,
             );
@@ -506,6 +509,19 @@ impl Widget for TextInput {
             UiEvent::MouseMove { .. } | UiEvent::MouseUp { .. } => {}
         }
 
+        if changed {
+            state.request_redraw();
+        }
+        changed
+    }
+
+    fn handle_keyboard_event(
+        &mut self,
+        event: &KeyboardEvent,
+        state: &mut EventState,
+        _layout: &LayoutNode,
+    ) -> bool {
+        let changed = TextInput::handle_keyboard_event(self, event);
         if changed {
             state.request_redraw();
         }

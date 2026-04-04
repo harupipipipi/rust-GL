@@ -80,7 +80,13 @@ impl Widget for Text {
         let ty = rect.y + f32_to_i32(self.style.padding.top);
         let max_w = f32_to_u32((rect.width as f32 - self.style.padding.horizontal()).max(0.0));
 
-        fonts.draw_text(canvas, &self.content, tx, ty, Some(max_w), self.font_size, self.color);
+        fonts.draw_text_in_rect(
+            canvas,
+            &self.content,
+            crate::canvas::Rect::new(tx, ty, max_w, rect.height.saturating_sub(f32_to_u32(self.style.padding.top))),
+            self.font_size,
+            self.color,
+        );
     }
 
     fn handle_event(

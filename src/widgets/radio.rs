@@ -156,12 +156,15 @@ impl Widget for RadioButton {
         // Label text.
         let text_x = bounds.x + f32_to_i32(CIRCLE_SIZE + CIRCLE_LABEL_GAP);
         let text_y = bounds.y + f32_to_i32((bounds.height as f32 - self.font_size) * 0.5);
-        fonts.draw_text(
+        fonts.draw_text_in_rect(
             canvas,
             &self.label,
-            text_x,
-            text_y,
-            None,
+            Rect::new(
+                text_x,
+                text_y,
+                bounds.width.saturating_sub(f32_to_u32(CIRCLE_SIZE + CIRCLE_LABEL_GAP)),
+                bounds.height,
+            ),
             self.font_size,
             Color::BLACK,
         );

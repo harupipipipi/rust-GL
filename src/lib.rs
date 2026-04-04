@@ -22,7 +22,7 @@ pub use focus::FocusManager;
 pub use keyboard::{Key, KeyboardEvent, Modifiers};
 pub use layout::{
     BoxConstraints, CrossAxisAlignment, EdgeInsets, LayoutDirection, LayoutNode, LayoutStyle,
-    Size,
+    OverflowBehavior, Size,
 };
 pub use text::FontManager;
 pub use widgets::{
@@ -167,6 +167,18 @@ mod tests {
     }
 
     #[test]
+    fn blend_pixel_respects_clip_rect() {
+        let mut c = Canvas::new(4, 4);
+        c.clear(Color::WHITE);
+        c.set_clip(Rect::new(1, 1, 2, 2));
+        c.blend_pixel(0, 0, Color::BLACK);
+        c.blend_pixel(1, 1, Color::BLACK);
+        c.clear_clip();
+        assert_eq!(c.pixels()[0], Color::WHITE.to_u32());
+        assert_eq!(c.pixels()[5], Color::BLACK.to_u32());
+    }
+
+    #[test]
     fn draw_rounded_rect_fills_center() {
         let mut c = Canvas::new(20, 20);
         c.clear(Color::WHITE);
@@ -276,6 +288,20 @@ mod tests {
         let b = Rect::new(5, 5, 0, 0);
         let u = a.union(&b);
         assert!(u.is_empty());
+    }
+
+    #[test]
+    fn rect_intersect_basic() {
+        let a = Rect::new(0, 0, 10, 10);
+        let b = Rect::new(5, 4, 10, 10);
+        assert_eq!(a.intersect(&b), Rect::new(5, 4, 5, 6));
+    }
+
+    #[test]
+    fn rect_intersect_empty_when_separate() {
+        let a = Rect::new(0, 0, 10, 10);
+        let b = Rect::new(20, 20, 5, 5);
+        assert!(a.intersect(&b).is_empty());
     }
 
     // ── Layout ──────────────────────────────────────────────────────
