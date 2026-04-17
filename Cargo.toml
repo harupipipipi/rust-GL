@@ -15,7 +15,7 @@ name = "rust2d-demo"
 path = "src/main.rs"
 
 [dependencies]
-winit = "0.29"
+winit = "0.30"
 softbuffer = "0.4"
 font-kit = "0.14"
 fontdue = "0.8"
